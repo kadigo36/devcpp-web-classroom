@@ -1,4 +1,4 @@
-const CACHE = 'devcpp-web-classroom-v0.3';
+const CACHE = 'devcpp-web-classroom-v0.4';
 const SHELL = [
   '/',
   '/index.html',
