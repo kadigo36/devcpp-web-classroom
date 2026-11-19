@@ -1,4 +1,4 @@
-import { compilerLanguage, normalizeProject, sourceFiles } from './core.mjs';
+import { compilerLanguage, normalizeProject, runtimeFiles, sourceFiles } from './core.mjs';
 
 const DEFAULT_COMPILE_TIMEOUT_MS = 60_000;
 const DEFAULT_RUN_TIMEOUT_MS = 5_000;
@@ -20,10 +20,13 @@ export async function compileAndRun(project, input = '', options = {}) {
     files: safeProject.files,
     language: compilerLanguage(safeProject),
     sources,
+    runtimeFiles: runtimeFiles(safeProject),
   };
   const compileTimeoutMs = options.compileTimeoutMs ?? DEFAULT_COMPILE_TIMEOUT_MS;
   const runTimeoutMs = options.runTimeoutMs ?? DEFAULT_RUN_TIMEOUT_MS;
   const onPhase = typeof options.onPhase === 'function' ? options.onPhase : () => {};
+  const onOutput = typeof options.onOutput === 'function' ? options.onOutput : () => {};
+  const args = Array.isArray(options.args) ? options.args.map(value => String(value)) : [];
 
   stopActiveCompilation();
   const worker = new Worker(new URL('./compiler-worker.mjs', import.meta.url), { type: 'module' });
@@ -72,11 +75,20 @@ export async function compileAndRun(project, input = '', options = {}) {
         armTimeout(phase === 'run' ? runTimeoutMs : compileTimeoutMs);
         return;
       }
+      if (event.data.type === 'stdout') {
+        onOutput(String(event.data.chunk ?? ''));
+        return;
+      }
       if (event.data.type === 'result') finish(event.data.result);
     };
 
     worker.onerror = () => finish({ success: false, stage: phase });
     armTimeout(compileTimeoutMs);
-    worker.postMessage({ id, project: request, input: String(input ?? '') });
+    worker.postMessage({
+      id,
+      project: request,
+      input: String(input ?? ''),
+      args,
+    });
   });
 }
