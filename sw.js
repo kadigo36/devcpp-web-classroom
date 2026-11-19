@@ -1,4 +1,4 @@
-const APP_CACHE = 'devcpp-web-classroom-v0.8';
+const APP_CACHE = 'devcpp-web-classroom-v0.9';
 const TOOLCHAIN_CACHE = 'devcpp-toolchain-v21.1.4-3';
 const TOOLCHAIN_PREFIX = 'https://cdn.jsdelivr.net/npm/@yowasp/clang@21.1.4-3/';
 
@@ -9,6 +9,7 @@ const SHELL = [
   '/src/style.css',
   '/src/main.js',
   '/src/core.mjs',
+  '/src/diagnostics.mjs',
   '/src/storage.mjs',
   '/src/compiler.mjs',
   '/src/compiler-worker.mjs',
