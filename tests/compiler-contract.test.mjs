@@ -204,3 +204,58 @@ test('v1.0 expõe diagnóstico de ambiente e persistência de ciclo de vida', as
   assert.match(main, /pagehide/);
   assert.match(sw, /\/src\/diagnostics\.mjs/);
 });
+
+
+test('stdin interativo usa SharedArrayBuffer sem expor diagnósticos', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  const vercel = await readFile(new URL('../vercel.json', import.meta.url), 'utf8');
+
+  assert.match(compiler, /SharedArrayBuffer/);
+  assert.match(compiler, /stdin_request/);
+  assert.match(compiler, /onInputRequest/);
+  assert.match(worker, /stdin_request/);
+  assert.match(main, /runtimeInputPanel/);
+  assert.match(main, /requestRuntimeInput/);
+  assert.match(html, /Programa à espera de entrada/);
+  assert.match(vercel, /Cross-Origin-Opener-Policy/);
+  assert.match(vercel, /Cross-Origin-Embedder-Policy/);
+  assert.match(vercel, /require-corp/);
+  assert.match(worker, /stderr:\s*null/);
+  assert.doesNotMatch(worker, /result:\s*\{[^}]*stderr/s);
+});
+
+test('TinyWasi pede nova linha quando stdin pré-carregado termina', () => {
+  const controlBytes = 2 * Int32Array.BYTES_PER_ELEMENT;
+  const shared = new SharedArrayBuffer(controlBytes + 1024);
+  const control = new Int32Array(shared, 0, 2);
+  const sharedBytes = new Uint8Array(shared, controlBytes);
+  const encoder = new TextEncoder();
+
+  let requests = 0;
+  const wasi = new TinyWasi({
+    input: '',
+    interactiveInput: shared,
+    onStdinRequest: () => {
+      requests++;
+      const encoded = encoder.encode('37\n');
+      sharedBytes.set(encoded);
+      Atomics.store(control, 1, encoded.length);
+      Atomics.store(control, 0, 1);
+      Atomics.notify(control, 0, 1);
+    },
+  });
+
+  const memory = new WebAssembly.Memory({ initial: 1 });
+  wasi.attach({ exports: { memory } });
+  const view = new DataView(memory.buffer);
+  const bytes = new Uint8Array(memory.buffer);
+  const api = wasi.imports();
+
+  view.setUint32(0, 128, true);
+  view.setUint32(4, 16, true);
+
+  assert.equal(api.fd_read(0, 0, 1, 32), 0);
+  assert.equal(requests, 1);
+  assert.equal(view.getUint32(32, true), 3);
+  assert.equal(new TextDecoder().decode(bytes.slice(128, 131)), '37\n');
+});

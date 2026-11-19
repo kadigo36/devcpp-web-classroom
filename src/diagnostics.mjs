@@ -20,6 +20,8 @@ export async function diagnoseEnvironment(scope = globalThis) {
     { id: 'cache', label: 'Cache Storage', required: false, ok: typeof scope.caches === 'object' },
     { id: 'crypto', label: 'Web Crypto', required: false, ok: !!scope.crypto?.getRandomValues },
     { id: 'secure', label: 'Contexto seguro (HTTPS)', required: false, ok: scope.isSecureContext === true },
+    { id: 'sab', label: 'SharedArrayBuffer', required: false, ok: typeof scope.SharedArrayBuffer === 'function' },
+    { id: 'coi', label: 'Isolamento cross-origin', required: false, ok: scope.crossOriginIsolated === true },
   ];
 
   let persisted = null;

@@ -1,4 +1,4 @@
-# Dev-C++ Web Classroom — 1.0.0
+# Dev-C++ Web Classroom — 1.0.1
 
 Primeira versão estável do IDE escolar C/C++ executado no navegador.
 
@@ -18,7 +18,7 @@ Disponibilizar um ambiente de programação para aulas de C e C++ que não depen
 - biblioteca local de vários projetos;
 - ficheiros C/C++, headers e ficheiros de dados;
 - stdout progressivo;
-- stdin pré-carregado;
+- stdin pré-carregado e entrada interativa para `scanf`/`std::cin`;
 - `argc/argv`;
 - filesystem virtual read-only;
 - `fopen(..., "r")` para dados do projeto;
@@ -75,7 +75,7 @@ A primeira preparação requer Internet e o browser continua a poder gerir/evict
 
 ## Limitações conhecidas da 1.0
 
-- stdin é fornecido antes da execução; não é ainda um terminal bloqueante verdadeiramente interativo;
+- a entrada interativa requer `SharedArrayBuffer` e isolamento cross-origin; em browsers incompatíveis continua disponível o stdin pré-carregado;
 - o filesystem WASI é deliberadamente read-only;
 - a toolchain inicial é pesada e pode demorar em equipamento modesto;
 - Google Drive não está integrado nesta release estável. A sincronização manual continua prevista como integração opcional posterior e exige credenciais OAuth aprovadas para o domínio da aplicação.
@@ -96,3 +96,12 @@ Node.js 20+.
 ## Histórico
 
 Consultar [CHANGELOG.md](CHANGELOG.md).
+
+
+## Correção 1.0.1 — scanf / std::cin
+
+Quando o programa tenta ler de stdin depois de consumir os dados pré-carregados, a execução fica suspensa dentro do Web Worker e a interface apresenta **Programa à espera de entrada**.
+
+O aluno escreve o valor e carrega Enter. A linha é entregue ao runtime WASI e o programa continua a partir do `scanf` ou `std::cin`.
+
+O mecanismo usa `SharedArrayBuffer + Atomics` e exige isolamento cross-origin. Em produção, o Vercel envia COOP/COEP para disponibilizar esta capacidade.

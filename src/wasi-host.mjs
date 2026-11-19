@@ -43,6 +43,8 @@ export class TinyWasi {
     files = {},
     maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
     onStdout = null,
+    interactiveInput = null,
+    onStdinRequest = null,
   } = {}) {
     this.encoder = new TextEncoder();
     this.decoder = new TextDecoder();
@@ -57,6 +59,14 @@ export class TinyWasi {
     this.outputBytes = 0;
     this.outputTruncated = false;
     this.onStdout = typeof onStdout === 'function' ? onStdout : null;
+    this.onStdinRequest = typeof onStdinRequest === 'function' ? onStdinRequest : null;
+    const hasSharedArrayBuffer = typeof SharedArrayBuffer === 'function';
+    this.interactiveControl = hasSharedArrayBuffer && interactiveInput instanceof SharedArrayBuffer
+      ? new Int32Array(interactiveInput, 0, 2)
+      : null;
+    this.interactiveBytes = hasSharedArrayBuffer && interactiveInput instanceof SharedArrayBuffer
+      ? new Uint8Array(interactiveInput, 2 * Int32Array.BYTES_PER_ELEMENT)
+      : null;
     this.files = new Map();
     this.openFiles = new Map();
     this.nextFd = PREOPEN_FD + 1;
@@ -136,6 +146,25 @@ export class TinyWasi {
     return { wasi_snapshot_preview1: wasi };
   }
 
+  requestInteractiveInput() {
+    if (!this.interactiveControl || !this.interactiveBytes || !this.onStdinRequest) return null;
+
+    Atomics.store(this.interactiveControl, 1, 0);
+    Atomics.store(this.interactiveControl, 0, 0);
+    try { this.onStdinRequest(); } catch { return null; }
+
+    const waitResult = Atomics.wait(this.interactiveControl, 0, 0);
+    const state = Atomics.load(this.interactiveControl, 0);
+    if (waitResult === 'timed-out' || state === 2) return null;
+    if (state !== 1) return null;
+
+    const length = Math.max(0, Math.min(
+      Atomics.load(this.interactiveControl, 1),
+      this.interactiveBytes.length,
+    ));
+    return this.interactiveBytes.slice(0, length);
+  }
+
   imports() {
     return {
       args_sizes_get: (argcPtr, argvBufSizePtr) => {
@@ -209,6 +238,13 @@ export class TinyWasi {
         let setPosition;
 
         if (fd === 0) {
+          if (this.inputOffset >= this.input.length) {
+            const interactive = this.requestInteractiveInput();
+            if (interactive) {
+              this.input = interactive;
+              this.inputOffset = 0;
+            }
+          }
           source = this.input;
           position = this.inputOffset;
           setPosition = value => { this.inputOffset = value; };
@@ -417,6 +453,8 @@ export async function executeWasi(bytes, input = '', options = {}) {
     args,
     files: options.files ?? {},
     onStdout: options.onStdout,
+    interactiveInput: options.interactiveInput,
+    onStdinRequest: options.onStdinRequest,
   });
   const instance = await WebAssembly.instantiate(module, wasi.importObject(module));
   wasi.attach(instance);
