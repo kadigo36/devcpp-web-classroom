@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dev-C++ Web Classroom — PoC</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <header>
+    <strong>Dev-C++ Web Classroom</strong>
+    <span>PoC v0.2 · Clang/LLD WebAssembly · execução local</span>
+  </header>
+  <main>
+    <nav>
+      <button id="new">Novo</button>
+      <button id="open">Abrir .c/.cpp</button>
+      <button id="save">Exportar</button>
+      <button id="compile">Compilar e executar</button>
+      <button id="stop" disabled>Parar</button>
+      <input id="file" type="file" accept=".c,.cpp,.h,.hpp,.txt" hidden>
+      <span id="phase" class="phase" aria-live="polite"></span>
+    </nav>
+
+    <section class="workspace">
+      <aside>
+        <h2>Ficheiro</h2>
+        <input id="filename" value="main.c" aria-label="Nome do ficheiro">
+        <p id="saved">Guardado localmente</p>
+        <p class="note">Sem sugestões, autocorreção, indicação da linha ou explicação de erros.</p>
+        <p class="note">O código é compilado e executado no navegador. Na primeira utilização, o compilador WebAssembly é obtido da CDN e fica sujeito à cache do navegador.</p>
+      </aside>
+      <article>
+        <label for="editor">Editor C / C++</label>
+        <textarea id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Código-fonte"></textarea>
+      </article>
+    </section>
+
+    <section class="io-grid">
+      <div class="console input-panel">
+        <h2>Entrada do programa (stdin)</h2>
+        <textarea id="stdin" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Ex.: 21"></textarea>
+      </div>
+      <div class="console">
+        <h2>Consola</h2>
+        <pre id="output" aria-live="polite"></pre>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
