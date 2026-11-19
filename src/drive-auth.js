@@ -25,7 +25,8 @@ function waitForGoogleIdentity(timeoutMs = 15_000) {
 const returnTo = sessionStorage.getItem('devcpp:drive:return') || '/';
 
 cancel.onclick = () => {
-  location.replace(returnTo.startsWith('/') ? returnTo : '/');
+  const target = consumeDriveReturnPath();
+  location.replace(target);
 };
 
 try {
