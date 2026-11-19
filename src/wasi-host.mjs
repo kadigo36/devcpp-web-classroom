@@ -8,6 +8,7 @@ const ERRNO = {
 };
 
 const FILETYPE_CHARACTER_DEVICE = 2;
+const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
 
 export class WasiExit extends Error {
   constructor(code) {
@@ -22,7 +23,7 @@ function u64(view, offset, value) {
 }
 
 export class TinyWasi {
-  constructor({ input = '', args = ['program.wasm'], env = {} } = {}) {
+  constructor({ input = '', args = ['program.wasm'], env = {}, maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES } = {}) {
     this.input = new TextEncoder().encode(String(input));
     this.inputOffset = 0;
     this.args = args.map(String);
@@ -32,6 +33,9 @@ export class TinyWasi {
     this.memory = null;
     this.encoder = new TextEncoder();
     this.decoder = new TextDecoder();
+    this.maxOutputBytes = maxOutputBytes;
+    this.outputBytes = 0;
+    this.outputTruncated = false;
   }
 
   attach(instance) {
@@ -117,7 +121,15 @@ export class TinyWasi {
           merged.set(chunk, offset);
           offset += chunk.length;
         }
-        (fd === 1 ? this.stdout : this.stderr).push(merged);
+
+        const remaining = Math.max(0, this.maxOutputBytes - this.outputBytes);
+        if (remaining > 0) {
+          const visible = merged.subarray(0, remaining);
+          (fd === 1 ? this.stdout : this.stderr).push(visible);
+          this.outputBytes += visible.length;
+        }
+        if (merged.length > remaining) this.outputTruncated = true;
+
         this.writeU32(nwrittenPtr, total);
         return ERRNO.SUCCESS;
       },
@@ -224,5 +236,5 @@ export async function executeWasi(bytes, input = '') {
     if (error instanceof WasiExit) exitCode = error.code;
     else throw error;
   }
-  return { exitCode, stdout: wasi.text('stdout'), stderr: wasi.text('stderr') };
+  return { exitCode, stdout: wasi.text('stdout'), stderr: wasi.text('stderr'), outputTruncated: wasi.outputTruncated };
 }
