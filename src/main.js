@@ -23,6 +23,7 @@ import {
   beginDriveAuthorization,
   disconnectDrive,
   driveConnected,
+  getDriveOAuthConfig,
   listDriveProjects,
   loadProjectFromDrive,
   saveProjectToDrive,
@@ -71,6 +72,7 @@ const currentProjectName = $('currentProjectName');
 let project = await loadProject();
 let saveTimer;
 let pendingRuntimeInputResolve = null;
+let driveOAuthAvailable = false;
 
 function activeSource() {
   return project.files[project.activeFile] ?? '';
@@ -144,10 +146,16 @@ async function renderProjectSelect() {
 
 function updateDriveUi() {
   const connected = driveConnected();
-  driveStatus.textContent = connected ? 'Ligado' : 'Não ligado';
-  driveStatus.dataset.state = connected ? 'online' : 'offline';
 
-  driveConnect.disabled = connected;
+  if (!driveOAuthAvailable) {
+    driveStatus.textContent = 'Por configurar';
+    driveStatus.dataset.state = 'offline';
+  } else {
+    driveStatus.textContent = connected ? 'Ligado' : 'Não ligado';
+    driveStatus.dataset.state = connected ? 'online' : 'offline';
+  }
+
+  driveConnect.disabled = connected || !driveOAuthAvailable;
   driveSave.disabled = !connected;
   driveOpen.disabled = !connected;
   driveDisconnect.disabled = !connected;
@@ -303,7 +311,21 @@ projectSelect.onchange = async () => {
   }
 };
 
+async function refreshDriveConfiguration() {
+  try {
+    const config = await getDriveOAuthConfig();
+    driveOAuthAvailable = !!config.clientId;
+  } catch {
+    driveOAuthAvailable = false;
+  }
+  updateDriveUi();
+}
+
 driveConnect.onclick = async () => {
+  if (!driveOAuthAvailable) {
+    output.textContent = 'Google Drive ainda não está configurado neste deployment.';
+    return;
+  }
   await persistNow();
   beginDriveAuthorization(location.pathname + location.search + location.hash);
 };
@@ -796,6 +818,7 @@ addEventListener('pagehide', () => {
 addEventListener('online', updateNetworkStatus);
 addEventListener('offline', updateNetworkStatus);
 updateNetworkStatus();
+await refreshDriveConfiguration();
 await runEnvironmentDiagnosis(false);
 
 if ('serviceWorker' in navigator) {
