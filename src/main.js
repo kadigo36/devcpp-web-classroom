@@ -62,6 +62,11 @@ const driveConnect = $('driveConnect');
 const driveSave = $('driveSave');
 const driveOpen = $('driveOpen');
 const driveDisconnect = $('driveDisconnect');
+const menuToggle = $('menuToggle');
+const menuClose = $('menuClose');
+const menuBackdrop = $('menuBackdrop');
+const appMenu = $('appMenu');
+const currentProjectName = $('currentProjectName');
 
 let project = await loadProject();
 let saveTimer;
@@ -160,6 +165,8 @@ function updateDriveUi() {
 }
 
 async function render() {
+  currentProjectName.textContent = project.name;
+  currentProjectName.title = project.name;
   filename.value = project.activeFile;
   editor.value = activeSource();
   stdin.value = project.runConfig?.stdin ?? '';
@@ -198,6 +205,40 @@ function updateNetworkStatus() {
   networkStatus.textContent = navigator.onLine ? 'Online' : 'Offline';
   networkStatus.dataset.state = navigator.onLine ? 'online' : 'offline';
 }
+
+function setMenuOpen(open) {
+  const isOpen = open === true;
+  appMenu.classList.toggle('open', isOpen);
+  appMenu.setAttribute('aria-hidden', String(!isOpen));
+  menuToggle.setAttribute('aria-expanded', String(isOpen));
+  menuBackdrop.hidden = !isOpen;
+  document.body.classList.toggle('menu-open', isOpen);
+
+  if (isOpen) {
+    queueMicrotask(() => menuClose.focus());
+  } else if (document.activeElement === menuClose || appMenu.contains(document.activeElement)) {
+    queueMicrotask(() => menuToggle.focus());
+  }
+}
+
+function closeAppMenu() {
+  setMenuOpen(false);
+}
+
+function openAppMenu() {
+  setMenuOpen(true);
+}
+
+menuToggle.onclick = () => {
+  if (appMenu.classList.contains('open')) closeAppMenu();
+  else openAppMenu();
+};
+menuClose.onclick = closeAppMenu;
+menuBackdrop.onclick = closeAppMenu;
+
+appMenu.addEventListener('click', event => {
+  if (event.target.closest('[data-menu-action]')) closeAppMenu();
+});
 
 
 function closeRuntimeInput(value = null) {
@@ -248,6 +289,7 @@ editor.addEventListener('keydown', event => {
 });
 
 projectSelect.onchange = async () => {
+  closeAppMenu();
   try {
     await persistNow();
     project = await loadProject(projectSelect.value);
@@ -728,9 +770,17 @@ addEventListener('keydown', event => {
     return;
   }
 
-  if (event.key === 'Escape' && !stopButton.disabled) {
-    event.preventDefault();
-    stopButton.click();
+  if (event.key === 'Escape') {
+    if (appMenu.classList.contains('open')) {
+      event.preventDefault();
+      closeAppMenu();
+      if (stopButton.disabled) return;
+    }
+
+    if (!stopButton.disabled) {
+      event.preventDefault();
+      stopButton.click();
+    }
   }
 });
 
