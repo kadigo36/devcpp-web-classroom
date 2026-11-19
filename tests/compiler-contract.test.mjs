@@ -23,7 +23,7 @@ test('diagnósticos são silenciados antes da UI', () => {
   assert.doesNotMatch(worker, /result:\s*\{[^}]*stderr/s);
 });
 
-test('v0.9 mantém stdout incremental e ficheiros runtime', () => {
+test('v1.0 mantém stdout incremental e ficheiros runtime', () => {
   assert.match(worker, /type:\s*'stdout'/);
   assert.match(worker, /runtimeFiles/);
   assert.match(compiler, /onOutput/);
@@ -37,11 +37,11 @@ test('interface mantém ausência de assistência', () => {
   assert.doesNotMatch(html, /monaco|codemirror|language-server|suggestion|correção do erro/i);
 });
 
-test('v0.9 mantém IndexedDB, snapshots e service worker', () => {
+test('v1.0 mantém IndexedDB, snapshots e service worker', () => {
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /createSnapshot/);
   assert.match(storage, /restoreSnapshot/);
-  assert.match(sw, /devcpp-web-classroom-v0\.9/);
+  assert.match(sw, /devcpp-web-classroom-v1\.0/);
 });
 
 test('TinyWasi implementa stdin e stdout incremental', () => {
@@ -151,7 +151,7 @@ test('TinyWasi trunca output excessivo sem bloquear o programa', () => {
 });
 
 
-test('v0.9 prepara cache offline apenas para a toolchain fixa', async () => {
+test('v1.0 prepara cache offline apenas para a toolchain fixa', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="prepareOffline"/);
   assert.match(sw, /devcpp-toolchain-v21\.1\.4-3/);
@@ -166,7 +166,7 @@ test('v0.9 prepara cache offline apenas para a toolchain fixa', async () => {
 });
 
 
-test('v0.9 expõe biblioteca local multi-projeto', async () => {
+test('v1.0 expõe biblioteca local multi-projeto', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="projectSelect"/);
   assert.match(html, /id="renameProject"/);
@@ -179,7 +179,7 @@ test('v0.9 expõe biblioteca local multi-projeto', async () => {
 });
 
 
-test('v0.9 expõe ações de ficheiro e atalhos sem assistência', async () => {
+test('v1.0 expõe ações de ficheiro e atalhos sem assistência', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="renameFile"/);
   assert.match(html, /id="duplicateFile"/);
@@ -191,7 +191,7 @@ test('v0.9 expõe ações de ficheiro e atalhos sem assistência', async () => {
 });
 
 
-test('v0.9 expõe diagnóstico de ambiente e persistência de ciclo de vida', async () => {
+test('v1.0 expõe diagnóstico de ambiente e persistência de ciclo de vida', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   const diagnostics = await readFile(new URL('../src/diagnostics.mjs', import.meta.url), 'utf8');
   assert.match(html, /id="diagnoseEnvironment"/);
