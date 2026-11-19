@@ -139,6 +139,7 @@ function setBusy(busy) {
   compileButton.disabled = busy;
   stopButton.disabled = !busy;
   editor.readOnly = busy;
+  projectSelect.disabled = busy;
 }
 
 function updateNetworkStatus() {
@@ -223,7 +224,7 @@ $('newFile').onclick = async () => {
     persistEditorIntoProject();
     project = addFile(project, clean, project.files[clean] ?? '');
     project = await saveProject(project);
-    render();
+    await render();
   } catch {
     output.textContent = 'Não foi possível criar o ficheiro.';
   }
@@ -236,7 +237,7 @@ $('deleteFile').onclick = async () => {
     await createSnapshot(project, 'before-delete-file').catch(() => {});
     project = removeFile(project, project.activeFile);
     project = await saveProject(project);
-    render();
+    await render();
   } catch {
     output.textContent = 'O projeto precisa de pelo menos um ficheiro.';
   }
@@ -251,7 +252,7 @@ $('file').onchange = async event => {
     persistEditorIntoProject();
     project = addFile(project, file.name, await file.text());
     project = await saveProject(project);
-    render();
+    await render();
     output.textContent = '';
   } catch {
     output.textContent = 'Não foi possível importar o ficheiro.';
@@ -403,7 +404,7 @@ $('restoreProject').onclick = async () => {
     await createSnapshot(project, 'before-restore').catch(() => {});
     project = await restoreSnapshot(snapshots[index].snapshotId);
     output.textContent = 'Backup restaurado.';
-    render();
+    await render();
   } catch {
     output.textContent = 'Não foi possível restaurar o backup.';
   }
@@ -478,5 +479,5 @@ if ('serviceWorker' in navigator) {
 }
 
 document.title = `Dev-C++ Web Classroom v${APP_VERSION}`;
-render();
+await render();
 setBusy(false);
