@@ -12,7 +12,7 @@
   <header>
     <strong>Dev-C++ Web Classroom</strong>
     <div class="header-meta">
-      <span>v1.0 · Estável · C/C++ local no navegador</span>
+      <span>v1.0.1 · C/C++ local no navegador</span>
       <span id="networkStatus" class="status-pill">A verificar rede…</span>
       <span id="compatStatus" class="status-pill">Compatibilidade: a verificar…</span>
     </div>
@@ -73,6 +73,14 @@
       <div class="console">
         <h2>Consola</h2>
         <pre id="output" aria-live="polite"></pre>
+        <div id="runtimeInputPanel" class="runtime-input" hidden>
+          <label for="runtimeInput">Programa à espera de entrada</label>
+          <div class="runtime-input-row">
+            <input id="runtimeInput" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Entrada pedida pelo programa">
+            <button id="sendRuntimeInput" type="button">Enviar</button>
+          </div>
+          <small>Escreve o valor pedido por scanf/cin e carrega Enter.</small>
+        </div>
       </div>
     </section>
   </main>
