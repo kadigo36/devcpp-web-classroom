@@ -26,7 +26,7 @@ function compilerArgs(project) {
 }
 
 self.onmessage = async event => {
-  const { id, project, input = '', args = [] } = event.data ?? {};
+  const { id, project, input = '', args = [], interactiveInput = null } = event.data ?? {};
   if (!id || !project) return;
 
   try {
@@ -66,7 +66,9 @@ self.onmessage = async event => {
       const run = await executeWasi(executable, input, {
         args,
         files: project.runtimeFiles,
+        interactiveInput,
         onStdout: chunk => self.postMessage({ id, type: 'stdout', chunk }),
+        onStdinRequest: () => self.postMessage({ id, type: 'stdin_request' }),
       });
       self.postMessage({
         id,
