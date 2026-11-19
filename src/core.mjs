@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.5.0';
+export const APP_VERSION = '0.6.0';
 export const STORAGE_KEY_V2 = 'devcpp-classroom:poc:v1';
 export const DEFAULT_PROJECT_ID = 'default';
 export const MAX_FILE_BYTES = 500_000;
