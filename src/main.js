@@ -8,8 +8,10 @@ import {
   importProjectPackage,
   normalizeProject,
   programArgsFromLines,
+  duplicateFile,
   publicCompileStatus,
   removeFile,
+  renameFile,
   renameProject,
   validateFilename,
 } from './core.mjs';
@@ -51,6 +53,7 @@ function persistEditorIntoProject() {
   project = normalizeProject({
     ...project,
     files: { ...project.files, [project.activeFile]: editor.value },
+    runConfig: { stdin: stdin.value, args: argsInput.value },
     updatedAt: Date.now(),
   });
 }
@@ -115,6 +118,8 @@ async function renderProjectSelect() {
 async function render() {
   filename.value = project.activeFile;
   editor.value = activeSource();
+  stdin.value = project.runConfig?.stdin ?? '';
+  argsInput.value = project.runConfig?.args ?? '';
   languageLabel.textContent = compilerLanguage(project).toUpperCase();
   renderFileList();
   await renderProjectSelect();
@@ -132,7 +137,7 @@ function phaseText(phase, progress) {
 
 function setBusy(busy) {
   const ids = [
-    'newProject', 'renameProject', 'deleteProject', 'newFile', 'open', 'save', 'exportProject', 'importProject',
+    'newProject', 'renameProject', 'deleteProject', 'newFile', 'renameFile', 'duplicateFile', 'open', 'save', 'exportProject', 'importProject',
     'backupProject', 'restoreProject', 'prepareOffline', 'deleteFile',
   ];
   for (const id of ids) $(id).disabled = busy;
@@ -148,6 +153,8 @@ function updateNetworkStatus() {
 }
 
 editor.addEventListener('input', scheduleSave);
+stdin.addEventListener('input', scheduleSave);
+argsInput.addEventListener('input', scheduleSave);
 editor.addEventListener('keydown', event => {
   if (event.key === 'Tab') {
     event.preventDefault();
@@ -227,6 +234,33 @@ $('newFile').onclick = async () => {
     await render();
   } catch {
     output.textContent = 'Não foi possível criar o ficheiro.';
+  }
+};
+
+$('renameFile').onclick = async () => {
+  const next = prompt('Novo nome do ficheiro:', project.activeFile);
+  if (next === null) return;
+  try {
+    await persistNow();
+    project = await saveProject(renameFile(project, project.activeFile, next.trim()));
+    await render();
+  } catch {
+    output.textContent = 'Não foi possível renomear o ficheiro.';
+  }
+};
+
+$('duplicateFile').onclick = async () => {
+  const source = project.activeFile;
+  const dot = source.lastIndexOf('.');
+  const suggested = dot > 0 ? `${source.slice(0, dot)}-copia${source.slice(dot)}` : `${source}-copia`;
+  const target = prompt('Nome da cópia:', suggested);
+  if (target === null) return;
+  try {
+    await persistNow();
+    project = await saveProject(duplicateFile(project, source, target.trim()));
+    await render();
+  } catch {
+    output.textContent = 'Não foi possível duplicar o ficheiro.';
   }
 };
 
@@ -467,6 +501,27 @@ stopButton.onclick = () => {
     setBusy(false);
   }
 };
+
+addEventListener('keydown', event => {
+  const modifier = event.ctrlKey || event.metaKey;
+
+  if (modifier && event.key.toLowerCase() === 's') {
+    event.preventDefault();
+    persistNow();
+    return;
+  }
+
+  if (modifier && event.key === 'Enter') {
+    event.preventDefault();
+    if (!compileButton.disabled) compileButton.click();
+    return;
+  }
+
+  if (event.key === 'Escape' && !stopButton.disabled) {
+    event.preventDefault();
+    stopButton.click();
+  }
+});
 
 addEventListener('online', updateNetworkStatus);
 addEventListener('offline', updateNetworkStatus);
