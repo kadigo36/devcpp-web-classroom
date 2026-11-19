@@ -1,0 +1,9 @@
+{
+  "name": "Dev-C++ Web Classroom",
+  "short_name": "DevC++ Classroom",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#111827",
+  "description": "Ambiente C/C++ de sala de aula com compilação local no navegador."
+}

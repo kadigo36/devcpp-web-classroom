@@ -1,5 +1,15 @@
-import { STORAGE_KEY, DEFAULT_C, makeProject, publicCompileStatus } from './core.mjs';
+import {
+  APP_VERSION,
+  addFile,
+  compilerLanguage,
+  createProject,
+  normalizeProject,
+  publicCompileStatus,
+  removeFile,
+  validateFilename,
+} from './core.mjs';
 import { compileAndRun, stopActiveCompilation } from './compiler.mjs';
+import { loadProject, saveProject } from './storage.mjs';
 
 const $ = id => document.getElementById(id);
 const editor = $('editor');
@@ -10,92 +20,158 @@ const stdin = $('stdin');
 const compileButton = $('compile');
 const stopButton = $('stop');
 const phaseLabel = $('phase');
+const fileList = $('fileList');
+const languageLabel = $('language');
 
-let project = { name: 'main.c', source: DEFAULT_C };
-try {
-  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
-  project = makeProject(stored.name, stored.source);
-} catch {}
+let project = await loadProject();
+let saveTimer;
 
-function render() {
-  filename.value = project.name;
-  editor.value = project.source;
+function activeSource() {
+  return project.files[project.activeFile] ?? '';
 }
 
-function persist() {
+function persistEditorIntoProject() {
+  project = normalizeProject({
+    ...project,
+    files: {
+      ...project.files,
+      [project.activeFile]: editor.value,
+    },
+    updatedAt: Date.now(),
+  });
+}
+
+async function persistNow() {
   try {
-    project = makeProject(filename.value, editor.value);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
-    saved.textContent = 'Guardado localmente';
+    persistEditorIntoProject();
+    project = await saveProject(project);
+    saved.textContent = 'Guardado';
   } catch {
-    saved.textContent = 'Não foi possível guardar — verifica o nome ou tamanho do ficheiro';
+    saved.textContent = 'Erro ao guardar';
   }
 }
 
-let timer;
-function schedule() {
-  saved.textContent = 'Alterações por guardar';
-  clearTimeout(timer);
-  timer = setTimeout(persist, 500);
+function scheduleSave() {
+  saved.textContent = 'A guardar…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persistNow, 400);
+}
+
+function renderFileList() {
+  fileList.replaceChildren();
+  for (const name of Object.keys(project.files).sort((a, b) => a.localeCompare(b))) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'file-item' + (name === project.activeFile ? ' active' : '');
+    button.textContent = name;
+    button.onclick = async () => {
+      if (name === project.activeFile) return;
+      persistEditorIntoProject();
+      project = normalizeProject({ ...project, activeFile: name });
+      await saveProject(project);
+      render();
+    };
+    fileList.append(button);
+  }
+}
+
+function render() {
+  filename.value = project.activeFile;
+  editor.value = activeSource();
+  languageLabel.textContent = compilerLanguage(project).toUpperCase();
+  renderFileList();
+}
+
+function phaseText(phase, progress) {
+  if (phase === 'toolchain') {
+    if (typeof progress === 'number') return `A carregar compilador… ${Math.round(progress * 100)}%`;
+    return 'A carregar compilador…';
+  }
+  if (phase === 'compile') return 'A compilar…';
+  if (phase === 'run') return 'A executar…';
+  return '';
 }
 
 function setBusy(busy) {
   compileButton.disabled = busy;
   stopButton.disabled = !busy;
   editor.readOnly = busy;
-  filename.disabled = busy;
+  $('newProject').disabled = busy;
+  $('newFile').disabled = busy;
+  $('open').disabled = busy;
+  $('deleteFile').disabled = busy;
 }
 
-function phaseText(phase) {
-  if (phase === 'toolchain') return 'A carregar compilador local…';
-  if (phase === 'compile') return 'A compilar…';
-  if (phase === 'run') return 'A executar…';
-  return '';
-}
-
-editor.addEventListener('input', schedule);
-filename.addEventListener('input', schedule);
-editor.addEventListener('keydown', e => {
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    const s = editor.selectionStart;
-    editor.setRangeText('    ', s, editor.selectionEnd, 'end');
-    schedule();
+editor.addEventListener('input', scheduleSave);
+editor.addEventListener('keydown', event => {
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    const start = editor.selectionStart;
+    editor.setRangeText('    ', start, editor.selectionEnd, 'end');
+    scheduleSave();
   }
 });
 
-$('new').onclick = () => {
-  if (!confirm('Criar novo ficheiro? Exporta primeiro o trabalho que pretendes preservar.')) return;
-  project = { name: 'main.c', source: DEFAULT_C };
-  render();
-  persist();
+$('newProject').onclick = async () => {
+  if (!confirm('Criar um novo projeto local? Exporta primeiro qualquer trabalho que pretendas preservar.')) return;
+  project = createProject();
+  project = await saveProject(project);
   output.textContent = '';
+  stdin.value = '';
+  render();
+};
+
+$('newFile').onclick = async () => {
+  const name = prompt('Nome do novo ficheiro (.c, .cpp, .h, .hpp):', 'ficheiro.c');
+  if (name === null) return;
+  const clean = name.trim();
+  if (!validateFilename(clean)) {
+    output.textContent = 'Nome de ficheiro inválido.';
+    return;
+  }
+  persistEditorIntoProject();
+  project = addFile(project, clean, project.files[clean] ?? '');
+  project = await saveProject(project);
+  render();
+};
+
+$('deleteFile').onclick = async () => {
+  if (!confirm(`Eliminar ${project.activeFile} do projeto local?`)) return;
+  try {
+    project = removeFile(project, project.activeFile);
+    project = await saveProject(project);
+    render();
+  } catch {
+    output.textContent = 'O projeto precisa de pelo menos um ficheiro.';
+  }
 };
 
 $('open').onclick = () => $('file').click();
-$('file').onchange = async e => {
-  const f = e.target.files?.[0];
-  if (!f) return;
+$('file').onchange = async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
   try {
-    project = makeProject(f.name, await f.text());
+    if (!validateFilename(file.name) || file.size > 500_000) throw new Error();
+    persistEditorIntoProject();
+    project = addFile(project, file.name, await file.text());
+    project = await saveProject(project);
     render();
-    persist();
     output.textContent = '';
   } catch {
-    output.textContent = 'Não foi possível abrir o ficheiro.';
+    output.textContent = 'Não foi possível importar o ficheiro.';
   }
-  e.target.value = '';
+  event.target.value = '';
 };
 
-$('save').onclick = () => {
+$('save').onclick = async () => {
   try {
-    persist();
-    const p = makeProject(filename.value, editor.value);
-    const url = URL.createObjectURL(new Blob([p.source], { type: 'text/plain;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = p.name;
-    a.click();
+    await persistNow();
+    const source = project.files[project.activeFile];
+    const url = URL.createObjectURL(new Blob([source], { type: 'text/plain;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = project.activeFile;
+    anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch {
     output.textContent = 'Não foi possível exportar o ficheiro.';
@@ -104,14 +180,15 @@ $('save').onclick = () => {
 
 compileButton.onclick = async () => {
   try {
-    persist();
-    const current = makeProject(filename.value, editor.value);
+    await persistNow();
     output.textContent = '';
     phaseLabel.textContent = 'A preparar…';
     setBusy(true);
 
-    const result = await compileAndRun(current, stdin.value, {
-      onPhase: phase => { phaseLabel.textContent = phaseText(phase); },
+    const result = await compileAndRun(project, stdin.value, {
+      onPhase: (phase, progress) => {
+        phaseLabel.textContent = phaseText(phase, progress);
+      },
     });
 
     if (result.stopped) {
@@ -148,5 +225,12 @@ stopButton.onclick = () => {
   }
 };
 
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }, { once: true });
+}
+
+document.title = `Dev-C++ Web Classroom v${APP_VERSION}`;
 render();
 setBusy(false);
