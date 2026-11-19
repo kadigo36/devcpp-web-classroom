@@ -1,122 +1,79 @@
-# Dev-C++ Web Classroom — v0.5
+# Dev-C++ Web Classroom — v0.6
 
 IDE escolar de C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
 
-## Novidades da v0.5
+## Novidades da v0.6
 
-- **stdout progressivo**: `printf` e `cout` podem aparecer na consola enquanto o programa está a executar.
-- **Argumentos de programa (`argc/argv`)**: um argumento por linha na interface.
-- **Filesystem virtual read-only** para ficheiros `.txt`, `.dat` e `.csv`.
-- Suporte inicial a `fopen(..., "r")`, `fread`/`fscanf`, `fseek` e `fclose` sobre ficheiros do projeto.
-- O programa continua sem acesso ao disco real, rede, Google Drive ou sistema operativo.
-- Proteção contra path traversal (`../`) e operações de escrita no filesystem virtual.
-- Mantém backups locais, export/import de projeto, limites de recursos e PWA da v0.4.
+- Cache dedicada para a toolchain fixa `@yowasp/clang@21.1.4-3`.
+- Botão **Preparar offline**.
+- Autoteste real de C e C++ durante a preparação.
+- O estado só é marcado como concluído se os dois programas de diagnóstico compilarem e executarem.
+- Pedido opcional de armazenamento persistente através da API do browser.
+- Mantém stdout progressivo, `argc/argv`, filesystem virtual read-only, backups e limites das versões anteriores.
 
-## Modelo de execução
+## Preparação offline
 
-```text
-Código C/C++
-   ↓
-YoWASP Clang/LLD (WebAssembly)
-   ↓
-program.wasm
-   ↓
-Worker isolado
-   ↓
-TinyWasi
-   ├─ stdin pré-carregado
-   ├─ stdout progressivo
-   ├─ argc/argv
-   └─ ficheiros virtuais read-only
-```
+A primeira preparação requer Internet.
 
-## Ficheiros de dados
+Ao carregar em **Preparar offline**, a aplicação:
 
-Ficheiros com extensões:
+1. aguarda que o Service Worker esteja ativo;
+2. tenta solicitar armazenamento persistente ao browser;
+3. compila e executa um programa C mínimo;
+4. compila e executa um programa C++ com componentes da biblioteca standard;
+5. guarda em cache os recursos da toolchain que forem pedidos durante o processo;
+6. só apresenta sucesso se C e C++ passarem.
 
-- `.txt`
-- `.dat`
-- `.csv`
+O Service Worker interceta os pedidos feitos para a versão **fixa** da toolchain no jsDelivr e guarda as respostas numa cache separada.
 
-podem fazer parte do projeto e ficam disponíveis ao programa durante a execução.
+## Limitação importante
 
-Exemplo:
+A v0.6 melhora muito o cenário offline, mas não promete que todos os browsers mantenham a cache indefinidamente.
 
-```c
-FILE *f = fopen("dados.txt", "r");
-```
+Sem armazenamento persistente, o browser pode eliminar dados em situações de pressão de armazenamento. O pedido de persistência pode ser aceite ou recusado de acordo com as regras do próprio browser.
 
-O ficheiro existe apenas no filesystem virtual do programa. Não existe acesso ao disco do computador.
+Também não é possível compilar offline num dispositivo que nunca tenha feito a preparação inicial.
 
-## Argumentos
+## Runtime
 
-A interface apresenta **Argumentos do programa**, com um argumento por linha.
+A v0.6 preserva:
 
-Por exemplo:
-
-```text
-teste
-42
-nome com espaços
-```
-
-é exposto como `argv[1]`, `argv[2]` e `argv[3]`.
-
-## Entrada interativa
-
-A v0.5 **ainda não afirma ter stdin verdadeiramente interativo durante a execução**.
-
-O conteúdo de stdin continua a ser preparado antes de executar. Esta limitação é intencional: não vamos simular um terminal bloqueante e apresentá-lo como funcional antes de existir uma implementação tecnicamente robusta.
+- C17 e C++20;
+- stdout progressivo;
+- stdin preparado antes da execução;
+- argumentos `argc/argv`;
+- ficheiros virtuais `.txt`, `.dat` e `.csv`;
+- `fopen(..., "r")`, leitura e seek;
+- bloqueio de escrita e path traversal;
+- timeout;
+- limite de output;
+- execução em Web Worker.
 
 ## Contrato pedagógico
 
-A aplicação continua sem:
+Continua sem:
 
 - autocomplete;
 - autocorreção;
 - sugestões;
 - lint;
-- mensagens detalhadas do compilador;
-- identificação da linha do erro;
+- indicação da linha do erro;
+- diagnósticos detalhados de Clang;
 - IA.
 
-Um erro de compilação continua a aparecer apenas como:
+Erros de compilação continuam visíveis apenas como:
 
 `Compilação falhou.`
 
-## Segurança
+## Segurança da cadeia de fornecimento
 
-O filesystem virtual é read-only nesta versão.
+A aplicação não usa uma versão flutuante da toolchain.
 
-- sem acesso ao filesystem real;
-- sem `../`;
-- sem paths absolutos;
-- sem criação, remoção ou alteração de ficheiros;
-- sem APIs de rede;
-- execução em Worker terminável;
-- limite de output;
-- limites por ficheiro/projeto;
-- timeout de compilação e runtime.
+```text
+@yowasp/clang@21.1.4-3
+```
 
-## Toolchain
-
-Toolchain fixa:
-
-`@yowasp/clang@21.1.4-3`
-
-Não é atualizada automaticamente.
-
-A compilação e execução são locais no browser, mas a primeira carga da toolchain ainda depende da CDN.
-
-## Exemplos
-
-- `examples/hello.c`
-- `examples/hello.cpp`
-- `examples/input.c`
-- `examples/input.cpp`
-- `examples/args.c`
-- `examples/fileio.c`
-- `examples/dados.txt`
+A cache da v0.6 só trata pedidos cujo URL corresponde a essa versão fixa. Alterar a versão do compilador continua a exigir uma alteração explícita no código e nova validação.
 
 ## Desenvolvimento
 
@@ -125,4 +82,4 @@ npm run dev
 npm test
 ```
 
-Requer Node.js 20+.
+Node.js 20+.
