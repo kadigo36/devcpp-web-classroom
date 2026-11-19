@@ -4,6 +4,8 @@ export const DEFAULT_PROJECT_ID = 'default';
 export const MAX_FILE_BYTES = 500_000;
 export const MAX_PROJECT_BYTES = 2_000_000;
 export const MAX_PROJECT_FILES = 50;
+export const MAX_PROGRAM_ARGS = 64;
+export const MAX_ARG_BYTES = 4096;
 
 export const DEFAULT_C = '#include <stdio.h>\n\nint main(void) {\n    printf("Ola, mundo!\\n");\n    return 0;\n}\n';
 
@@ -141,4 +143,15 @@ export function importProjectPackage(text) {
     throw new Error('Formato de projeto não suportado');
   }
   return normalizeProject(payload.project);
+}
+
+
+export function programArgsFromLines(text) {
+  if (typeof text !== 'string') return [];
+  const args = text.split(/\r?\n/).filter(line => line.length > 0);
+  if (args.length > MAX_PROGRAM_ARGS) throw new Error('Demasiados argumentos');
+  for (const arg of args) {
+    if (new TextEncoder().encode(arg).length > MAX_ARG_BYTES) throw new Error('Argumento demasiado grande');
+  }
+  return args;
 }
