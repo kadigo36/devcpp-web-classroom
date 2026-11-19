@@ -1,4 +1,4 @@
-const APP_CACHE = 'devcpp-web-classroom-v1.0.2';
+const APP_CACHE = 'devcpp-web-classroom-v1.1';
 const TOOLCHAIN_CACHE = 'devcpp-toolchain-v21.1.4-3';
 const TOOLCHAIN_PREFIX = 'https://cdn.jsdelivr.net/npm/@yowasp/clang@21.1.4-3/';
 
@@ -10,6 +10,7 @@ const SHELL = [
   '/src/main.js',
   '/src/core.mjs',
   '/src/diagnostics.mjs',
+  '/src/drive.mjs',
   '/src/storage.mjs',
   '/src/compiler.mjs',
   '/src/compiler-worker.mjs',
@@ -49,6 +50,14 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  if (url.origin === self.location.origin && (
+    url.pathname === '/drive-auth.html' ||
+    url.pathname.startsWith('/api/')
+  )) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   if (url.origin === self.location.origin) {
     event.respondWith(cacheFirst(event.request, APP_CACHE));

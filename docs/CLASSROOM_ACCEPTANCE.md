@@ -71,3 +71,15 @@ Este documento define testes manuais antes de disponibilizar o IDE numa aula ou 
 ## Aprovação
 
 A aplicação só deve ser considerada validada para um equipamento/sala depois dos testes relevantes ao conteúdo da disciplina passarem.
+
+## Google Drive
+
+- [ ] Confirmar que `scanf` interativo continua funcional com Drive integrado.
+- [ ] Carregar **Ligar Drive** e concluir a autorização Google.
+- [ ] Confirmar que o scope pedido é `drive.file`.
+- [ ] Guardar um projeto no Drive.
+- [ ] Confirmar a pasta `Dev-C++ Web Classroom` no Drive da conta autorizada.
+- [ ] Alterar e sincronizar novamente o mesmo projeto.
+- [ ] Abrir o projeto através de **Abrir do Drive**.
+- [ ] Simular alteração remota e confirmar que não existe sobrescrita silenciosa.
+- [ ] Desligar o Drive e confirmar que a compilação local continua funcional.

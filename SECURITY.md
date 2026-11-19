@@ -1,57 +1,35 @@
-# Segurança — Dev-C++ Web Classroom 1.0
+# Segurança — Dev-C++ Web Classroom 1.1
 
 ## Modelo de ameaça
 
-O projeto assume código C/C++ não confiável escrito por alunos.
+O projeto assume código C/C++ não confiável escrito por alunos. A execução ocorre num Web Worker e o programa compilado recebe apenas o subconjunto WASI implementado pela aplicação.
 
-A execução ocorre dentro de um Web Worker e o programa compilado recebe apenas o subconjunto WASI implementado pela aplicação.
+## Isolamento do programa
 
-## Isolamento
+O programa do aluno não recebe acesso ao DOM, cookies, tokens OAuth, Google Drive API, filesystem real, sockets, rede ou comandos do sistema operativo.
 
-O programa do aluno não recebe, através do runtime:
+O token Google existe apenas na thread principal da aplicação e em `sessionStorage`.
 
-- acesso ao DOM;
-- acesso a cookies;
-- tokens OAuth;
-- APIs Google;
-- filesystem real do dispositivo;
-- sockets ou APIs de rede;
-- comandos do sistema operativo.
+## Google Drive
 
-O filesystem virtual da 1.0 é read-only e contém apenas ficheiros de dados do projeto.
+A integração usa o scope mínimo `drive.file`. Não são pedidos `drive`, `drive.readonly` nem outros scopes de acesso global.
+
+O OAuth Client ID é público e vem da variável Vercel `GOOGLE_OAUTH_CLIENT_ID`. Não existe Client Secret no frontend.
+
+A página `/drive-auth.html` usa um perfil COOP separado para o popup OAuth. O IDE principal mantém `COOP: same-origin` + `COEP: require-corp` para suportar `SharedArrayBuffer` no stdin interativo.
+
+## Conflitos
+
+Antes de atualizar um projeto já ligado ao Drive, a aplicação compara o `modifiedTime` remoto com o último valor sincronizado. Se o remoto tiver mudado, a aplicação não o sobrescreve sem confirmação explícita.
 
 ## Controlo de recursos
 
-Existem limites para:
+Existem limites de compilação, execução, output, tamanho de ficheiros, tamanho de projeto, número de ficheiros e argumentos.
 
-- tempo de compilação;
-- tempo de execução;
-- output acumulado;
-- tamanho de ficheiros;
-- tamanho do projeto;
-- número de ficheiros;
-- número/tamanho de argumentos.
+## Toolchain
 
-O Worker pode ser terminado para interromper execução excessiva ou ciclos infinitos.
-
-## Cadeia de fornecimento
-
-A toolchain está fixada em:
-
-`@yowasp/clang@21.1.4-3`
-
-A aplicação não utiliza uma versão flutuante e não faz upgrades automáticos.
-
-GitHub Actions usadas no CI são fixadas por SHA.
-
-## Diagnósticos do compilador
-
-Clang pode produzir diagnósticos internamente, mas a interface do aluno não os recebe. O contrato público de falha permanece genérico.
+A toolchain permanece fixa em `@yowasp/clang@21.1.4-3`.
 
 ## Dados sensíveis
 
-Não colocar palavras-passe, tokens, chaves API ou outros segredos dentro dos projetos C/C++.
-
-## Vulnerabilidades
-
-Se for encontrada uma vulnerabilidade de segurança, não incluir segredos nem dados de alunos num issue público. O problema deve ser comunicado ao proprietário do repositório por um canal privado disponível.
+Não colocar passwords, tokens, chaves API ou outros segredos nos projetos C/C++.
