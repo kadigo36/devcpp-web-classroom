@@ -1,6 +1,6 @@
-import { languageFromName, makeProject } from './core.mjs';
+import { compilerLanguage, normalizeProject, sourceFiles } from './core.mjs';
 
-const DEFAULT_COMPILE_TIMEOUT_MS = 45_000;
+const DEFAULT_COMPILE_TIMEOUT_MS = 60_000;
 const DEFAULT_RUN_TIMEOUT_MS = 5_000;
 let sequence = 0;
 let activeJob = null;
@@ -12,9 +12,15 @@ export function stopActiveCompilation() {
 }
 
 export async function compileAndRun(project, input = '', options = {}) {
-  const safeProject = makeProject(project?.name, project?.source);
-  const language = languageFromName(safeProject.name);
-  const request = { ...safeProject, language };
+  const safeProject = normalizeProject(project);
+  const sources = sourceFiles(safeProject);
+  if (sources.length === 0) return { success: false, stage: 'compile' };
+
+  const request = {
+    files: safeProject.files,
+    language: compilerLanguage(safeProject),
+    sources,
+  };
   const compileTimeoutMs = options.compileTimeoutMs ?? DEFAULT_COMPILE_TIMEOUT_MS;
   const runTimeoutMs = options.runTimeoutMs ?? DEFAULT_RUN_TIMEOUT_MS;
   const onPhase = typeof options.onPhase === 'function' ? options.onPhase : () => {};
@@ -49,22 +55,20 @@ export async function compileAndRun(project, input = '', options = {}) {
 
     const armTimeout = ms => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        finish({
-          success: phase === 'run',
-          stage: phase,
-          timedOut: true,
-          stdout: '',
-          runtimeFailed: phase === 'run',
-        });
-      }, ms);
+      timer = setTimeout(() => finish({
+        success: phase === 'run',
+        stage: phase,
+        timedOut: true,
+        stdout: '',
+        runtimeFailed: phase === 'run',
+      }), ms);
     };
 
     worker.onmessage = event => {
       if (event.data?.id !== id) return;
       if (event.data.type === 'phase') {
         phase = event.data.phase;
-        onPhase(phase);
+        onPhase(phase, event.data.progress);
         armTimeout(phase === 'run' ? runTimeoutMs : compileTimeoutMs);
         return;
       }
