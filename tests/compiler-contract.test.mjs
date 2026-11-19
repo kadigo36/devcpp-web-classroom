@@ -37,11 +37,11 @@ test('interface mantém ausência de assistência', () => {
   assert.doesNotMatch(html, /monaco|codemirror|language-server|suggestion|correção do erro/i);
 });
 
-test('v1.0 mantém IndexedDB, snapshots e service worker', () => {
+test('v1.1 mantém IndexedDB, snapshots e service worker', () => {
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /createSnapshot/);
   assert.match(storage, /restoreSnapshot/);
-  assert.match(sw, /devcpp-web-classroom-v1\.0/);
+  assert.match(sw, /devcpp-web-classroom-v1\.1/);
 });
 
 test('TinyWasi implementa stdin e stdout incremental', () => {
