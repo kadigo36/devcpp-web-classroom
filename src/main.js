@@ -16,6 +16,7 @@ import {
   validateFilename,
 } from './core.mjs';
 import { compileAndRun, stopActiveCompilation } from './compiler.mjs';
+import { diagnoseEnvironment, formatDiagnostics } from './diagnostics.mjs';
 import {
   createSnapshot,
   deleteProject,
@@ -40,6 +41,7 @@ const phaseLabel = $('phase');
 const fileList = $('fileList');
 const languageLabel = $('language');
 const networkStatus = $('networkStatus');
+const compatStatus = $('compatStatus');
 const projectSelect = $('projectSelect');
 
 let project = await loadProject();
@@ -138,7 +140,7 @@ function phaseText(phase, progress) {
 function setBusy(busy) {
   const ids = [
     'newProject', 'renameProject', 'deleteProject', 'newFile', 'renameFile', 'duplicateFile', 'open', 'save', 'exportProject', 'importProject',
-    'backupProject', 'restoreProject', 'prepareOffline', 'deleteFile',
+    'backupProject', 'restoreProject', 'prepareOffline', 'diagnoseEnvironment', 'deleteFile',
   ];
   for (const id of ids) $(id).disabled = busy;
   compileButton.disabled = busy;
@@ -330,6 +332,23 @@ $('projectFile').onchange = async event => {
     event.target.value = '';
   }
 };
+
+async function runEnvironmentDiagnosis(showDetails = true) {
+  try {
+    const report = await diagnoseEnvironment(globalThis);
+    compatStatus.textContent = report.requiredOk ? 'Compatibilidade: OK' : 'Compatibilidade: falhou';
+    compatStatus.dataset.state = report.requiredOk ? 'online' : 'offline';
+    if (showDetails) output.textContent = formatDiagnostics(report);
+    return report;
+  } catch {
+    compatStatus.textContent = 'Compatibilidade: desconhecida';
+    compatStatus.dataset.state = 'offline';
+    if (showDetails) output.textContent = 'Não foi possível verificar a compatibilidade deste navegador.';
+    return null;
+  }
+}
+
+$('diagnoseEnvironment').onclick = () => runEnvironmentDiagnosis(true);
 
 $('prepareOffline').onclick = async () => {
   setBusy(true);
@@ -523,9 +542,19 @@ addEventListener('keydown', event => {
   }
 });
 
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') void persistNow();
+});
+
+addEventListener('pagehide', () => {
+  try { persistEditorIntoProject(); } catch {}
+  void saveProject(project).catch(() => {});
+});
+
 addEventListener('online', updateNetworkStatus);
 addEventListener('offline', updateNetworkStatus);
 updateNetworkStatus();
+await runEnvironmentDiagnosis(false);
 
 if ('serviceWorker' in navigator) {
   addEventListener('load', () => {
