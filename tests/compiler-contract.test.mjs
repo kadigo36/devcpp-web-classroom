@@ -220,7 +220,8 @@ test('stdin interativo usa SharedArrayBuffer sem expor diagnósticos', async () 
   assert.match(vercel, /Cross-Origin-Opener-Policy/);
   assert.match(vercel, /Cross-Origin-Embedder-Policy/);
   assert.match(vercel, /require-corp/);
-  assert.doesNotMatch(worker, /stderr:\s*[^n]/);
+  assert.match(worker, /stderr:\s*null/);
+  assert.doesNotMatch(worker, /result:\s*\{[^}]*stderr/s);
 });
 
 test('TinyWasi pede nova linha quando stdin pré-carregado termina', () => {
