@@ -1,4 +1,4 @@
-const APP_CACHE = 'devcpp-web-classroom-v1.0.1';
+const APP_CACHE = 'devcpp-web-classroom-v1.0.2';
 const TOOLCHAIN_CACHE = 'devcpp-toolchain-v21.1.4-3';
 const TOOLCHAIN_PREFIX = 'https://cdn.jsdelivr.net/npm/@yowasp/clang@21.1.4-3/';
 
