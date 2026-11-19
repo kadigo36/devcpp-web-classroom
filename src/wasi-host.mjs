@@ -60,10 +60,11 @@ export class TinyWasi {
     this.outputTruncated = false;
     this.onStdout = typeof onStdout === 'function' ? onStdout : null;
     this.onStdinRequest = typeof onStdinRequest === 'function' ? onStdinRequest : null;
-    this.interactiveControl = interactiveInput instanceof SharedArrayBuffer
+    const hasSharedArrayBuffer = typeof SharedArrayBuffer === 'function';
+    this.interactiveControl = hasSharedArrayBuffer && interactiveInput instanceof SharedArrayBuffer
       ? new Int32Array(interactiveInput, 0, 2)
       : null;
-    this.interactiveBytes = interactiveInput instanceof SharedArrayBuffer
+    this.interactiveBytes = hasSharedArrayBuffer && interactiveInput instanceof SharedArrayBuffer
       ? new Uint8Array(interactiveInput, 2 * Int32Array.BYTES_PER_ELEMENT)
       : null;
     this.files = new Map();
