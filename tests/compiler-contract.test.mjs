@@ -25,7 +25,7 @@ test('diagnósticos são silenciados antes da UI', () => {
 test('interface mantém ausência de assistência', () => {
   assert.match(html, /spellcheck="false"/);
   assert.match(html, /autocomplete="off"/);
-  assert.doesNotMatch(html, /monaco|autocomplete|suggestion|correção do erro/i);
+  assert.doesNotMatch(html, /monaco|codemirror|language-server|suggestion|correção do erro/i);
 });
 
 test('v0.3 usa IndexedDB e service worker', () => {
