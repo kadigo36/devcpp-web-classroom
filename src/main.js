@@ -15,7 +15,7 @@ import {
   renameProject,
   validateFilename,
 } from './core.mjs';
-import { compileAndRun, stopActiveCompilation } from './compiler.mjs';
+import { compileAndRun, interactiveStdinSupported, stopActiveCompilation } from './compiler.mjs';
 import { diagnoseEnvironment, formatDiagnostics } from './diagnostics.mjs';
 import {
   createSnapshot,
@@ -43,9 +43,13 @@ const languageLabel = $('language');
 const networkStatus = $('networkStatus');
 const compatStatus = $('compatStatus');
 const projectSelect = $('projectSelect');
+const runtimeInputPanel = $('runtimeInputPanel');
+const runtimeInput = $('runtimeInput');
+const sendRuntimeInput = $('sendRuntimeInput');
 
 let project = await loadProject();
 let saveTimer;
+let pendingRuntimeInputResolve = null;
 
 function activeSource() {
   return project.files[project.activeFile] ?? '';
@@ -153,6 +157,42 @@ function updateNetworkStatus() {
   networkStatus.textContent = navigator.onLine ? 'Online' : 'Offline';
   networkStatus.dataset.state = navigator.onLine ? 'online' : 'offline';
 }
+
+
+function closeRuntimeInput(value = null) {
+  const resolve = pendingRuntimeInputResolve;
+  pendingRuntimeInputResolve = null;
+  runtimeInputPanel.hidden = true;
+  runtimeInput.value = '';
+  if (resolve) resolve(value);
+}
+
+function requestRuntimeInput() {
+  if (!interactiveStdinSupported()) return Promise.resolve(null);
+  if (pendingRuntimeInputResolve) closeRuntimeInput(null);
+
+  runtimeInputPanel.hidden = false;
+  runtimeInput.value = '';
+  queueMicrotask(() => runtimeInput.focus());
+
+  return new Promise(resolve => {
+    pendingRuntimeInputResolve = resolve;
+  });
+}
+
+function submitRuntimeInput() {
+  if (!pendingRuntimeInputResolve) return;
+  const value = runtimeInput.value;
+  closeRuntimeInput(value);
+}
+
+sendRuntimeInput.onclick = submitRuntimeInput;
+runtimeInput.addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    submitRuntimeInput();
+  }
+});
 
 editor.addEventListener('input', scheduleSave);
 stdin.addEventListener('input', scheduleSave);
@@ -424,6 +464,7 @@ $('prepareOffline').onclick = async () => {
   } catch {
     output.textContent = 'Não foi possível concluir a preparação offline. É necessária ligação à Internet na primeira preparação.';
   } finally {
+    if (pendingRuntimeInputResolve) closeRuntimeInput(null);
     phaseLabel.textContent = '';
     setBusy(false);
   }
@@ -475,6 +516,7 @@ compileButton.onclick = async () => {
 
     const result = await compileAndRun(project, stdin.value, {
       args,
+      onInputRequest: interactiveStdinSupported() ? requestRuntimeInput : undefined,
       onPhase: (phase, progress) => {
         phaseLabel.textContent = phaseText(phase, progress);
       },
@@ -514,6 +556,7 @@ compileButton.onclick = async () => {
 };
 
 stopButton.onclick = () => {
+  if (pendingRuntimeInputResolve) closeRuntimeInput(null);
   if (stopActiveCompilation()) {
     output.textContent = 'Execução interrompida.';
     phaseLabel.textContent = '';
