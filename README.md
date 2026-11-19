@@ -1,59 +1,88 @@
-# Dev-C++ Web Classroom — v0.9 RC
+# Dev-C++ Web Classroom — 1.0.0
 
-Release candidate do IDE escolar C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
+Primeira versão estável do IDE escolar C/C++ executado no navegador.
 
-## Novidades da v0.9
+**Produção:** https://devcpp-web-classroom.vercel.app
 
-- diagnóstico de compatibilidade do browser;
-- distinção entre requisitos essenciais e capacidades opcionais;
-- verificação de WebAssembly, Web Workers e IndexedDB;
-- verificação de Service Worker, Cache Storage, Web Crypto e contexto HTTPS;
-- estimativa de utilização/quota de armazenamento quando disponível;
-- indicação de armazenamento persistente quando o browser a fornece;
-- gravação best-effort ao ocultar/abandonar a página;
-- teste automático de consistência da versão entre package, core, HTML e cache.
+## Objetivo
 
-## Requisitos essenciais
+Disponibilizar um ambiente de programação para aulas de C e C++ que não dependa de executáveis Windows nem de um servidor de compilação e que preserve um modo pedagógico estrito: o aluno escreve, compila e corrige o próprio código sem assistência automática.
 
-Para o núcleo do IDE funcionar, a v0.9 exige:
-
-- WebAssembly;
-- Web Workers;
-- IndexedDB.
-
-Service Worker e Cache Storage são tratados como capacidades opcionais: a ausência deles degrada principalmente o modo offline, não a edição básica.
-
-## Privacidade
-
-O diagnóstico é exclusivamente local. Não existe telemetria de código, projetos, armazenamento ou browser para servidores próprios.
-
-## Funcionalidades preservadas
-
-A v0.9 mantém tudo o que foi validado nas versões anteriores:
+## Funcionalidades da 1.0
 
 - C17 e C++20;
-- Clang/LLD WebAssembly;
+- Clang/LLD WebAssembly executado no browser;
+- compilação em Web Worker;
+- execução WASI isolada e terminável;
+- projetos multi-ficheiro;
+- biblioteca local de vários projetos;
+- ficheiros C/C++, headers e ficheiros de dados;
 - stdout progressivo;
 - stdin pré-carregado;
-- argc/argv;
+- `argc/argv`;
 - filesystem virtual read-only;
-- biblioteca multi-projeto;
+- `fopen(..., "r")` para dados do projeto;
+- backups locais e snapshots;
+- exportação/importação `.devcpp.json`;
 - renomear e duplicar ficheiros;
-- backups e import/export;
-- atalhos;
-- preparação offline;
+- persistência de stdin/argv por projeto;
+- preparação offline da toolchain fixa;
+- diagnóstico local de compatibilidade;
+- atalhos de teclado;
 - limites de recursos e timeout;
-- Worker isolado.
+- PWA/Service Worker;
+- CI e preview obrigatórios antes de produção.
 
 ## Contrato pedagógico
 
-Continua sem autocomplete, autocorreção, sugestões, lint, IA ou diagnósticos detalhados de compilação.
+A 1.0 não fornece:
 
-## Toolchain
+- autocomplete;
+- autocorreção;
+- sugestões de código;
+- lint pedagógico;
+- indicação da linha do erro;
+- texto dos diagnósticos do compilador;
+- IA.
+
+Quando a compilação falha, a interface mostra apenas:
+
+`Compilação falhou.`
+
+## Segurança
+
+O código do aluno executa num Web Worker e não recebe acesso direto ao DOM, tokens, Google Drive, filesystem real ou rede através do runtime WASI.
+
+A toolchain está fixada em:
 
 `@yowasp/clang@21.1.4-3`
 
-Versão fixa.
+Não existem atualizações automáticas do compilador.
+
+Consultar [SECURITY.md](SECURITY.md).
+
+## Privacidade
+
+Os projetos são armazenados localmente no browser. A aplicação não possui backend próprio de compilação nem telemetria de código.
+
+Consultar [PRIVACY.md](PRIVACY.md).
+
+## Offline
+
+O botão **Preparar offline** aquece C e C++, coloca os recursos pedidos da toolchain fixa em cache e tenta solicitar armazenamento persistente.
+
+A primeira preparação requer Internet e o browser continua a poder gerir/evictar armazenamento segundo as suas próprias políticas.
+
+## Limitações conhecidas da 1.0
+
+- stdin é fornecido antes da execução; não é ainda um terminal bloqueante verdadeiramente interativo;
+- o filesystem WASI é deliberadamente read-only;
+- a toolchain inicial é pesada e pode demorar em equipamento modesto;
+- Google Drive não está integrado nesta release estável. A sincronização manual continua prevista como integração opcional posterior e exige credenciais OAuth aprovadas para o domínio da aplicação.
+
+## Validação de sala de aula
+
+Consultar [docs/CLASSROOM_ACCEPTANCE.md](docs/CLASSROOM_ACCEPTANCE.md).
 
 ## Desenvolvimento
 
@@ -63,3 +92,7 @@ npm test
 ```
 
 Node.js 20+.
+
+## Histórico
+
+Consultar [CHANGELOG.md](CHANGELOG.md).
