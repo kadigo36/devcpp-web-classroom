@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.1';
+export const APP_VERSION = '1.1.0';
 export const STORAGE_KEY_V2 = 'devcpp-classroom:poc:v1';
 export const DEFAULT_PROJECT_ID = 'default';
 export const MAX_PROJECT_NAME = 80;
@@ -44,6 +44,7 @@ export function createProject(name = 'Projeto', id = generateProjectId()) {
     activeFile: 'main.c',
     files: { 'main.c': DEFAULT_C },
     runConfig: { stdin: '', args: '' },
+    drive: null,
     updatedAt: Date.now(),
   };
 }
@@ -93,12 +94,27 @@ export function normalizeProject(input) {
     args: typeof input.runConfig?.args === 'string' ? input.runConfig.args.slice(0, 50_000) : '',
   };
 
+  const drive = input.drive && typeof input.drive === 'object'
+    ? {
+        fileId: typeof input.drive.fileId === 'string' && input.drive.fileId.length <= 200
+          ? input.drive.fileId
+          : null,
+        modifiedTime: typeof input.drive.modifiedTime === 'string'
+          ? input.drive.modifiedTime.slice(0, 100)
+          : null,
+        syncedAt: typeof input.drive.syncedAt === 'string'
+          ? input.drive.syncedAt.slice(0, 100)
+          : null,
+      }
+    : null;
+
   return {
     id,
     name,
     activeFile,
     files: cleanFiles,
     runConfig,
+    drive: drive?.fileId ? drive : null,
     updatedAt: Number.isFinite(input.updatedAt) ? input.updatedAt : Date.now(),
   };
 }
@@ -189,6 +205,7 @@ export function cloneProjectAsNew(project, name = null) {
     ...normalized,
     id: generateProjectId(),
     name: validateProjectName(name) ? name.trim() : normalized.name,
+    drive: null,
     updatedAt: Date.now(),
   });
 }

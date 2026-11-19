@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+- adiciona sincronização manual opcional com Google Drive;
+- cria/reutiliza pasta `Dev-C++ Web Classroom` no Drive da conta autorizada;
+- usa apenas scope `drive.file`;
+- guarda tokens apenas em `sessionStorage`;
+- adiciona OAuth bridge separado para preservar o stdin interativo;
+- deteta conflitos por `modifiedTime` antes de sobrescrever;
+- clones/importações locais não herdam `fileId` remoto;
+
 ## 1.0.1
 
 - corrige `scanf()` e `std::cin` para pedir entrada durante a execução;
