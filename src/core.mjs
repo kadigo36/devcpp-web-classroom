@@ -17,7 +17,7 @@ export function languageFromName(name) {
 
 export function validateFilename(name) {
   return typeof name === 'string'
-    && /^[a-zA-Z0-9_ .-]+\.(c|cc|cpp|cxx|h|hpp)$/i.test(name)
+    && /^[a-zA-Z0-9_ .-]+\.(c|cc|cpp|cxx|h|hpp|txt|dat|csv)$/i.test(name)
     && name.length <= 100;
 }
 
