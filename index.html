@@ -12,7 +12,7 @@
   <header>
     <strong>Dev-C++ Web Classroom</strong>
     <div class="header-meta">
-      <span>v1.0.1 · C/C++ local no navegador</span>
+      <span>v1.1 · C/C++ local no navegador</span>
       <span id="networkStatus" class="status-pill">A verificar rede…</span>
       <span id="compatStatus" class="status-pill">Compatibilidade: a verificar…</span>
     </div>
@@ -42,6 +42,20 @@
       <span id="phase" class="phase" aria-live="polite"></span>
       <span class="shortcut-hint">Ctrl+Enter: executar · Ctrl+S: guardar · Esc: parar</span>
     </nav>
+
+    <section class="drive-bar" aria-label="Google Drive">
+      <div class="drive-heading">
+        <strong>Google Drive</strong>
+        <span id="driveStatus" class="status-pill">Não ligado</span>
+      </div>
+      <div class="drive-actions">
+        <button id="driveConnect">Ligar Drive</button>
+        <button id="driveSave" disabled>Guardar projeto no Drive</button>
+        <button id="driveOpen" disabled>Abrir do Drive</button>
+        <button id="driveDisconnect" disabled>Desligar</button>
+      </div>
+      <span id="driveProjectStatus" class="note">Sincronização manual. O compilador continua local.</span>
+    </section>
 
     <section class="workspace">
       <aside class="files-panel">
