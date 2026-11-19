@@ -1,68 +1,59 @@
-# Dev-C++ Web Classroom — v0.8
+# Dev-C++ Web Classroom — v0.9 RC
 
-IDE escolar C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
+Release candidate do IDE escolar C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
 
-## Novidades da v0.8
+## Novidades da v0.9
 
-A v0.8 melhora o fluxo diário sem acrescentar qualquer sistema de sugestão de código.
+- diagnóstico de compatibilidade do browser;
+- distinção entre requisitos essenciais e capacidades opcionais;
+- verificação de WebAssembly, Web Workers e IndexedDB;
+- verificação de Service Worker, Cache Storage, Web Crypto e contexto HTTPS;
+- estimativa de utilização/quota de armazenamento quando disponível;
+- indicação de armazenamento persistente quando o browser a fornece;
+- gravação best-effort ao ocultar/abandonar a página;
+- teste automático de consistência da versão entre package, core, HTML e cache.
 
-- renomear ficheiros;
-- duplicar ficheiros;
-- deteção de colisões de nomes;
-- `stdin` guardado por projeto;
-- argumentos `argc/argv` guardados por projeto;
-- ao trocar de projeto, o contexto de execução desse projeto é restaurado;
-- `Ctrl/Cmd+S`: guardar localmente;
-- `Ctrl/Cmd+Enter`: compilar e executar;
-- `Esc`: parar a execução;
-- indicação visual dos atalhos.
+## Requisitos essenciais
 
-## Gestão local
+Para o núcleo do IDE funcionar, a v0.9 exige:
 
-A biblioteca multi-projeto da v0.7 é preservada. Cada projeto guarda:
+- WebAssembly;
+- Web Workers;
+- IndexedDB.
 
-- ficheiros-fonte e headers;
-- ficheiros de dados;
-- ficheiro ativo;
-- stdin;
-- argumentos de execução;
-- snapshots locais.
+Service Worker e Cache Storage são tratados como capacidades opcionais: a ausência deles degrada principalmente o modo offline, não a edição básica.
 
-## Contrato pedagógico
+## Privacidade
 
-Os atalhos e ações de ficheiro são apenas operações de IDE. Não existe:
-
-- autocomplete;
-- autocorreção;
-- sugestão de código;
-- lint;
-- IA;
-- diagnóstico detalhado do compilador.
-
-Erros de compilação continuam a apresentar apenas:
-
-`Compilação falhou.`
+O diagnóstico é exclusivamente local. Não existe telemetria de código, projetos, armazenamento ou browser para servidores próprios.
 
 ## Funcionalidades preservadas
 
-- C17/C++20;
+A v0.9 mantém tudo o que foi validado nas versões anteriores:
+
+- C17 e C++20;
 - Clang/LLD WebAssembly;
 - stdout progressivo;
+- stdin pré-carregado;
+- argc/argv;
 - filesystem virtual read-only;
-- `argc/argv`;
-- projetos multi-ficheiro;
-- biblioteca de projetos;
-- backups;
-- export/import;
+- biblioteca multi-projeto;
+- renomear e duplicar ficheiros;
+- backups e import/export;
+- atalhos;
 - preparação offline;
-- limites de recursos;
+- limites de recursos e timeout;
 - Worker isolado.
+
+## Contrato pedagógico
+
+Continua sem autocomplete, autocorreção, sugestões, lint, IA ou diagnósticos detalhados de compilação.
 
 ## Toolchain
 
 `@yowasp/clang@21.1.4-3`
 
-Versão fixa, sem atualização automática.
+Versão fixa.
 
 ## Desenvolvimento
 
