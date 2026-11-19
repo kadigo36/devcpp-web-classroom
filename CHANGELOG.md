@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1
+
+- corrige `scanf()` e `std::cin` para pedir entrada durante a execução;
+- usa `SharedArrayBuffer + Atomics` dentro do Web Worker para suspender e retomar stdin;
+- adiciona controlo de entrada interativa na consola;
+- pausa o timeout enquanto o programa espera pelo utilizador;
+- ativa COOP/COEP no Vercel para isolamento cross-origin;
+- mantém fallback para stdin pré-carregado em browsers incompatíveis.
+
+
 ## 1.0.0
 
 Primeira release estável.
