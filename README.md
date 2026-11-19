@@ -1,107 +1,73 @@
-# Dev-C++ Web Classroom — 1.0.1
+# Dev-C++ Web Classroom — 1.1.0
 
-Primeira versão estável do IDE escolar C/C++ executado no navegador.
+IDE escolar C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
 
 **Produção:** https://devcpp-web-classroom.vercel.app
 
-## Objetivo
+## Novidades da 1.1
 
-Disponibilizar um ambiente de programação para aulas de C e C++ que não dependa de executáveis Windows nem de um servidor de compilação e que preserve um modo pedagógico estrito: o aluno escreve, compila e corrige o próprio código sem assistência automática.
+A v1.1 adiciona sincronização manual opcional com Google Drive sem alterar o modelo local-first.
 
-## Funcionalidades da 1.0
+- botão **Ligar Drive**;
+- pasta individual `Dev-C++ Web Classroom` criada no Drive da conta autorizada;
+- **Guardar projeto no Drive**;
+- **Abrir do Drive**;
+- atualização do mesmo ficheiro remoto nas sincronizações seguintes;
+- deteção de conflito através de `modifiedTime`;
+- confirmação explícita antes de substituir uma versão remota alterada;
+- metadados privados `appProperties` para identificar apenas ficheiros desta aplicação;
+- scope OAuth mínimo `https://www.googleapis.com/auth/drive.file`;
+- token de acesso guardado apenas em `sessionStorage`;
+- página OAuth separada para preservar o `SharedArrayBuffer` usado por `scanf`/`std::cin`.
+
+## Modelo local-first
+
+O projeto continua a ser editado, compilado e executado localmente no browser.
+
+O Google Drive é uma camada de sincronização/backup manual. O runtime C/C++ não recebe tokens, Google APIs nem acesso ao Drive.
+
+## Google Drive
+
+A aplicação cria ou reutiliza uma pasta `Dev-C++ Web Classroom` e guarda projetos como ficheiros `.devcpp.json`.
+
+A integração exige Google Drive API ativa e um OAuth 2.0 Web Client ID. No Vercel, o Client ID é configurado na variável `GOOGLE_OAUTH_CLIENT_ID`.
+
+Consultar `docs/DRIVE_SETUP.md`.
+
+## Funcionalidades principais
 
 - C17 e C++20;
-- Clang/LLD WebAssembly executado no browser;
-- compilação em Web Worker;
-- execução WASI isolada e terminável;
-- projetos multi-ficheiro;
-- biblioteca local de vários projetos;
-- ficheiros C/C++, headers e ficheiros de dados;
+- Clang/LLD WebAssembly;
+- compilação e execução em Web Workers;
+- `scanf` e `std::cin` interativos;
 - stdout progressivo;
-- stdin pré-carregado e entrada interativa para `scanf`/`std::cin`;
+- projetos multi-ficheiro;
+- biblioteca local multi-projeto;
+- ficheiros virtuais read-only;
 - `argc/argv`;
-- filesystem virtual read-only;
-- `fopen(..., "r")` para dados do projeto;
-- backups locais e snapshots;
-- exportação/importação `.devcpp.json`;
-- renomear e duplicar ficheiros;
-- persistência de stdin/argv por projeto;
-- preparação offline da toolchain fixa;
-- diagnóstico local de compatibilidade;
-- atalhos de teclado;
-- limites de recursos e timeout;
-- PWA/Service Worker;
-- CI e preview obrigatórios antes de produção.
+- backups e snapshots;
+- export/import local;
+- preparação offline;
+- diagnóstico do browser;
+- Google Drive manual opcional;
+- CI + preview antes de produção.
 
 ## Contrato pedagógico
 
-A 1.0 não fornece:
+Continua sem autocomplete, autocorreção, sugestões, lint pedagógico, indicação de linha do erro, diagnósticos detalhados do Clang ou IA.
 
-- autocomplete;
-- autocorreção;
-- sugestões de código;
-- lint pedagógico;
-- indicação da linha do erro;
-- texto dos diagnósticos do compilador;
-- IA.
+Falhas de compilação continuam visíveis apenas como `Compilação falhou.`
 
-Quando a compilação falha, a interface mostra apenas:
+## Segurança e privacidade
 
-`Compilação falhou.`
-
-## Segurança
-
-O código do aluno executa num Web Worker e não recebe acesso direto ao DOM, tokens, Google Drive, filesystem real ou rede através do runtime WASI.
-
-A toolchain está fixada em:
-
-`@yowasp/clang@21.1.4-3`
-
-Não existem atualizações automáticas do compilador.
-
-Consultar [SECURITY.md](SECURITY.md).
-
-## Privacidade
-
-Os projetos são armazenados localmente no browser. A aplicação não possui backend próprio de compilação nem telemetria de código.
-
-Consultar [PRIVACY.md](PRIVACY.md).
-
-## Offline
-
-O botão **Preparar offline** aquece C e C++, coloca os recursos pedidos da toolchain fixa em cache e tenta solicitar armazenamento persistente.
-
-A primeira preparação requer Internet e o browser continua a poder gerir/evictar armazenamento segundo as suas próprias políticas.
-
-## Limitações conhecidas da 1.0
-
-- a entrada interativa requer `SharedArrayBuffer` e isolamento cross-origin; em browsers incompatíveis continua disponível o stdin pré-carregado;
-- o filesystem WASI é deliberadamente read-only;
-- a toolchain inicial é pesada e pode demorar em equipamento modesto;
-- Google Drive não está integrado nesta release estável. A sincronização manual continua prevista como integração opcional posterior e exige credenciais OAuth aprovadas para o domínio da aplicação.
-
-## Validação de sala de aula
-
-Consultar [docs/CLASSROOM_ACCEPTANCE.md](docs/CLASSROOM_ACCEPTANCE.md).
+Consultar `SECURITY.md` e `PRIVACY.md`.
 
 ## Desenvolvimento
 
-```bash
-npm run dev
-npm test
-```
+`npm run dev`
+
+`npm test`
+
+Para testar OAuth localmente: `GOOGLE_OAUTH_CLIENT_ID="...apps.googleusercontent.com" npm run dev`.
 
 Node.js 20+.
-
-## Histórico
-
-Consultar [CHANGELOG.md](CHANGELOG.md).
-
-
-## Correção 1.0.1 — scanf / std::cin
-
-Quando o programa tenta ler de stdin depois de consumir os dados pré-carregados, a execução fica suspensa dentro do Web Worker e a interface apresenta **Programa à espera de entrada**.
-
-O aluno escreve o valor e carrega Enter. A linha é entregue ao runtime WASI e o programa continua a partir do `scanf` ou `std::cin`.
-
-O mecanismo usa `SharedArrayBuffer + Atomics` e exige isolamento cross-origin. Em produção, o Vercel envia COOP/COEP para disponibilizar esta capacidade.
