@@ -114,3 +114,24 @@ export function removeFile(project, name) {
 export function publicCompileStatus(result) {
   return result?.success === true ? 'Compilação concluída.' : 'Compilação falhou.';
 }
+
+
+export function exportProjectPackage(project) {
+  const normalized = normalizeProject(project);
+  return JSON.stringify({
+    format: 'devcpp-web-classroom-project',
+    formatVersion: 1,
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    project: normalized,
+  }, null, 2);
+}
+
+export function importProjectPackage(text) {
+  if (typeof text !== 'string' || text.length > MAX_PROJECT_BYTES * 2) throw new Error('Projeto inválido');
+  const payload = JSON.parse(text);
+  if (payload?.format !== 'devcpp-web-classroom-project' || payload?.formatVersion !== 1) {
+    throw new Error('Formato de projeto não suportado');
+  }
+  return normalizeProject(payload.project);
+}
