@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.8.0';
 export const STORAGE_KEY_V2 = 'devcpp-classroom:poc:v1';
 export const DEFAULT_PROJECT_ID = 'default';
 export const MAX_PROJECT_NAME = 80;
@@ -43,6 +43,7 @@ export function createProject(name = 'Projeto', id = generateProjectId()) {
     name: cleanName,
     activeFile: 'main.c',
     files: { 'main.c': DEFAULT_C },
+    runConfig: { stdin: '', args: '' },
     updatedAt: Date.now(),
   };
 }
@@ -87,11 +88,17 @@ export function normalizeProject(input) {
   const id = validateProjectId(input.id) ? input.id : DEFAULT_PROJECT_ID;
   const name = validateProjectName(input.name) ? input.name.trim() : 'Projeto';
 
+  const runConfig = {
+    stdin: typeof input.runConfig?.stdin === 'string' ? input.runConfig.stdin.slice(0, 100_000) : '',
+    args: typeof input.runConfig?.args === 'string' ? input.runConfig.args.slice(0, 50_000) : '',
+  };
+
   return {
     id,
     name,
     activeFile,
     files: cleanFiles,
+    runConfig,
     updatedAt: Number.isFinite(input.updatedAt) ? input.updatedAt : Date.now(),
   };
 }
@@ -189,4 +196,32 @@ export function cloneProjectAsNew(project, name = null) {
 export function renameProject(project, name) {
   if (!validateProjectName(name)) throw new Error('Nome de projeto inválido');
   return normalizeProject({ ...project, name: name.trim(), updatedAt: Date.now() });
+}
+
+
+export function renameFile(project, oldName, newName) {
+  const normalized = normalizeProject(project);
+  if (!validateFilename(oldName) || !(oldName in normalized.files)) throw new Error('Ficheiro inexistente');
+  if (!validateFilename(newName)) throw new Error('Nome inválido');
+  if (oldName === newName) return normalized;
+  if (newName in normalized.files) throw new Error('Já existe um ficheiro com esse nome');
+
+  const files = {};
+  for (const [name, source] of Object.entries(normalized.files)) {
+    files[name === oldName ? newName : name] = source;
+  }
+  return normalizeProject({
+    ...normalized,
+    files,
+    activeFile: normalized.activeFile === oldName ? newName : normalized.activeFile,
+    updatedAt: Date.now(),
+  });
+}
+
+export function duplicateFile(project, sourceName, targetName) {
+  const normalized = normalizeProject(project);
+  if (!(sourceName in normalized.files)) throw new Error('Ficheiro inexistente');
+  if (!validateFilename(targetName)) throw new Error('Nome inválido');
+  if (targetName in normalized.files) throw new Error('Já existe um ficheiro com esse nome');
+  return addFile(normalized, targetName, normalized.files[sourceName]);
 }

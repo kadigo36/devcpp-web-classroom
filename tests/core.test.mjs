@@ -5,6 +5,7 @@ import {
   MAX_PROGRAM_ARGS,
   MAX_PROJECT_FILES,
   addFile,
+  duplicateFile,
   cloneProjectAsNew,
   compilerLanguage,
   createProject,
@@ -14,6 +15,7 @@ import {
   programArgsFromLines,
   publicCompileStatus,
   removeFile,
+  renameFile,
   renameProject,
   runtimeFiles,
   sourceFiles,
@@ -150,4 +152,35 @@ test('renomear projeto valida nomes vazios', () => {
   const project = createProject('Antes');
   assert.equal(renameProject(project, 'Depois').name, 'Depois');
   assert.throws(() => renameProject(project, '   '));
+});
+
+
+test('v0.8 preserva configuração de execução por projeto', () => {
+  const p = normalizeProject({
+    ...createProject('Execução'),
+    runConfig: { stdin: '42\n', args: 'a\nb' },
+  });
+  assert.equal(p.runConfig.stdin, '42\n');
+  assert.equal(p.runConfig.args, 'a\nb');
+});
+
+test('renomear ficheiro preserva conteúdo e ficheiro ativo', () => {
+  const p = addFile(createProject(), 'teste.c', 'int x;');
+  const renamed = renameFile(p, 'teste.c', 'novo.c');
+  assert.equal(renamed.activeFile, 'novo.c');
+  assert.equal(renamed.files['novo.c'], 'int x;');
+  assert.equal('teste.c' in renamed.files, false);
+});
+
+test('renomear rejeita colisão de nomes', () => {
+  let p = addFile(createProject(), 'a.c', 'a');
+  p = addFile(p, 'b.c', 'b');
+  assert.throws(() => renameFile(p, 'a.c', 'b.c'));
+});
+
+test('duplicar ficheiro cria cópia independente', () => {
+  const p = addFile(createProject(), 'dados.txt', 'abc');
+  const copy = duplicateFile(p, 'dados.txt', 'dados-copia.txt');
+  assert.equal(copy.files['dados-copia.txt'], 'abc');
+  assert.equal(copy.activeFile, 'dados-copia.txt');
 });

@@ -1,56 +1,68 @@
-# Dev-C++ Web Classroom — v0.7
+# Dev-C++ Web Classroom — v0.8
 
 IDE escolar C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
 
-## Novidades da v0.7
+## Novidades da v0.8
 
-A v0.7 transforma o armazenamento local numa **biblioteca de projetos**.
+A v0.8 melhora o fluxo diário sem acrescentar qualquer sistema de sugestão de código.
 
-- vários projetos independentes no mesmo navegador;
-- seletor do projeto atual;
-- criar projetos com IDs próprios;
-- renomear projetos;
-- alternar entre projetos sem perder trabalho;
-- eliminar apenas o projeto selecionado;
-- importação de `.devcpp.json` como **novo projeto**, sem sobrescrever silenciosamente o projeto aberto;
-- backups filtrados por projeto;
-- migração compatível do antigo projeto `default`.
+- renomear ficheiros;
+- duplicar ficheiros;
+- deteção de colisões de nomes;
+- `stdin` guardado por projeto;
+- argumentos `argc/argv` guardados por projeto;
+- ao trocar de projeto, o contexto de execução desse projeto é restaurado;
+- `Ctrl/Cmd+S`: guardar localmente;
+- `Ctrl/Cmd+Enter`: compilar e executar;
+- `Esc`: parar a execução;
+- indicação visual dos atalhos.
 
-## Persistência
+## Gestão local
 
-Cada projeto tem o seu próprio ID e registo em IndexedDB. O ID do último projeto aberto é mantido localmente para a aplicação voltar ao mesmo projeto numa utilização seguinte.
+A biblioteca multi-projeto da v0.7 é preservada. Cada projeto guarda:
 
-Ao eliminar o último projeto, a aplicação cria automaticamente um projeto vazio novo para evitar deixar o IDE sem workspace válido.
-
-## Funcionalidades preservadas
-
-- C17 e C++20;
-- Clang/LLD WebAssembly no navegador;
-- projetos multi-ficheiro;
-- stdout progressivo;
-- stdin preparado antes da execução;
-- `argc/argv`;
-- filesystem virtual read-only para `.txt`, `.dat` e `.csv`;
-- backups e snapshots;
-- export/import de projetos;
-- limites de recursos e timeout;
-- preparação offline da toolchain fixa;
-- Web Worker isolado;
-- PWA e IndexedDB.
+- ficheiros-fonte e headers;
+- ficheiros de dados;
+- ficheiro ativo;
+- stdin;
+- argumentos de execução;
+- snapshots locais.
 
 ## Contrato pedagógico
 
-Continua sem autocomplete, autocorreção, sugestões, lint, IA ou diagnósticos detalhados de compilação.
+Os atalhos e ações de ficheiro são apenas operações de IDE. Não existe:
 
-Um erro de compilação continua visível apenas como:
+- autocomplete;
+- autocorreção;
+- sugestão de código;
+- lint;
+- IA;
+- diagnóstico detalhado do compilador.
+
+Erros de compilação continuam a apresentar apenas:
 
 `Compilação falhou.`
+
+## Funcionalidades preservadas
+
+- C17/C++20;
+- Clang/LLD WebAssembly;
+- stdout progressivo;
+- filesystem virtual read-only;
+- `argc/argv`;
+- projetos multi-ficheiro;
+- biblioteca de projetos;
+- backups;
+- export/import;
+- preparação offline;
+- limites de recursos;
+- Worker isolado.
 
 ## Toolchain
 
 `@yowasp/clang@21.1.4-3`
 
-A versão permanece fixa. Não existem upgrades automáticos.
+Versão fixa, sem atualização automática.
 
 ## Desenvolvimento
 
