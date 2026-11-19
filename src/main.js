@@ -114,7 +114,7 @@ function phaseText(phase, progress) {
 function setBusy(busy) {
   const ids = [
     'newProject', 'newFile', 'open', 'save', 'exportProject', 'importProject',
-    'backupProject', 'restoreProject', 'deleteFile',
+    'backupProject', 'restoreProject', 'prepareOffline', 'deleteFile',
   ];
   for (const id of ids) $(id).disabled = busy;
   compileButton.disabled = busy;
@@ -232,6 +232,85 @@ $('projectFile').onchange = async event => {
     output.textContent = 'Projeto inválido ou demasiado grande.';
   } finally {
     event.target.value = '';
+  }
+};
+
+$('prepareOffline').onclick = async () => {
+  setBusy(true);
+  output.textContent = 'A preparar compilador para utilização offline…';
+  phaseLabel.textContent = 'A preparar C…';
+
+  try {
+    if ('serviceWorker' in navigator) {
+      await navigator.serviceWorker.ready;
+    }
+
+    let persistent = null;
+    if (navigator.storage?.persist) {
+      try { persistent = await navigator.storage.persist(); } catch {}
+    }
+
+    const cProbe = {
+      id: 'default',
+      name: 'Diagnóstico C',
+      activeFile: 'probe.c',
+      files: { 'probe.c': 'int main(void) { return 0; }' },
+      updatedAt: Date.now(),
+    };
+
+    const cppProbe = {
+      id: 'default',
+      name: 'Diagnóstico C++',
+      activeFile: 'probe.cpp',
+      files: {
+        'probe.cpp': '#include <iostream>\n#include <string>\n#include <vector>\nint main() { std::vector<std::string> v{"ok"}; return v.empty(); }',
+      },
+      updatedAt: Date.now(),
+    };
+
+    const cResult = await compileAndRun(cProbe, '', {
+      compileTimeoutMs: 120_000,
+      runTimeoutMs: 10_000,
+      onPhase: (phase, progress) => {
+        phaseLabel.textContent = phaseText(phase, progress);
+      },
+    });
+    if (!cResult.success || cResult.runtimeFailed || cResult.timedOut) throw new Error('C probe failed');
+
+    phaseLabel.textContent = 'A preparar C++…';
+    const cppResult = await compileAndRun(cppProbe, '', {
+      compileTimeoutMs: 120_000,
+      runTimeoutMs: 10_000,
+      onPhase: (phase, progress) => {
+        phaseLabel.textContent = phaseText(phase, progress);
+      },
+    });
+    if (!cppResult.success || cppResult.runtimeFailed || cppResult.timedOut) throw new Error('C++ probe failed');
+
+    let cachedResources = null;
+    if ('caches' in globalThis) {
+      try {
+        const cache = await caches.open('devcpp-toolchain-v21.1.4-3');
+        cachedResources = (await cache.keys()).length;
+      } catch {}
+    }
+
+    const persistenceText = persistent === true
+      ? 'armazenamento persistente ativo'
+      : persistent === false
+        ? 'armazenamento persistente não garantido pelo browser'
+        : 'persistência não verificada';
+
+    const cacheText = Number.isInteger(cachedResources)
+      ? `${cachedResources} recursos da toolchain em cache`
+      : 'cache da toolchain preparada';
+
+    output.textContent = `Preparação concluída. C: OK · C++: OK · ${cacheText} · ${persistenceText}.`;
+  } catch {
+    output.textContent = 'Não foi possível concluir a preparação offline. É necessária ligação à Internet na primeira preparação.';
+  } finally {
+    phaseLabel.textContent = '';
+    setBusy(false);
   }
 };
 
