@@ -184,3 +184,35 @@ test('duplicar ficheiro cria cópia independente', () => {
   assert.equal(copy.files['dados-copia.txt'], 'abc');
   assert.equal(copy.activeFile, 'dados-copia.txt');
 });
+
+
+test('v1.1 preserva apenas metadados seguros do Drive', () => {
+  const project = normalizeProject({
+    ...createProject('Drive'),
+    drive: {
+      fileId: 'abc123',
+      modifiedTime: '2026-11-19T15:00:00.000Z',
+      syncedAt: '2026-11-19T15:01:00.000Z',
+      accessToken: 'NUNCA_GUARDAR',
+    },
+  });
+  assert.deepEqual(project.drive, {
+    fileId: 'abc123',
+    modifiedTime: '2026-11-19T15:00:00.000Z',
+    syncedAt: '2026-11-19T15:01:00.000Z',
+  });
+  assert.equal('accessToken' in project.drive, false);
+});
+
+test('v1.1 clone local perde ligação ao ficheiro remoto', () => {
+  const original = normalizeProject({
+    ...createProject('Ligado'),
+    drive: {
+      fileId: 'remote-file',
+      modifiedTime: '2026-11-19T15:00:00.000Z',
+      syncedAt: '2026-11-19T15:01:00.000Z',
+    },
+  });
+  const clone = cloneProjectAsNew(original, 'Cópia');
+  assert.equal(clone.drive, null);
+});
