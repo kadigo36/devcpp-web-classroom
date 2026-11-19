@@ -6,6 +6,7 @@ import {
   exportProjectPackage,
   importProjectPackage,
   normalizeProject,
+  programArgsFromLines,
   publicCompileStatus,
   removeFile,
   validateFilename,
@@ -25,6 +26,7 @@ const filename = $('filename');
 const saved = $('saved');
 const output = $('output');
 const stdin = $('stdin');
+const argsInput = $('args');
 const compileButton = $('compile');
 const stopButton = $('stop');
 const phaseLabel = $('phase');
@@ -142,11 +144,12 @@ $('newProject').onclick = async () => {
   project = await saveProject(createProject());
   output.textContent = '';
   stdin.value = '';
+  argsInput.value = '';
   render();
 };
 
 $('newFile').onclick = async () => {
-  const name = prompt('Nome do novo ficheiro (.c, .cpp, .h, .hpp):', 'ficheiro.c');
+  const name = prompt('Nome do novo ficheiro (.c, .cpp, .h, .hpp, .txt, .dat, .csv):', 'ficheiro.c');
   if (name === null) return;
   const clean = name.trim();
   if (!validateFilename(clean)) {
@@ -269,18 +272,28 @@ $('restoreProject').onclick = async () => {
 compileButton.onclick = async () => {
   try {
     await persistNow();
+    const args = programArgsFromLines(argsInput.value);
+    let streamedOutput = '';
+
     output.textContent = '';
     phaseLabel.textContent = 'A preparar…';
     setBusy(true);
 
     const result = await compileAndRun(project, stdin.value, {
+      args,
       onPhase: (phase, progress) => {
         phaseLabel.textContent = phaseText(phase, progress);
+      },
+      onOutput: chunk => {
+        streamedOutput += chunk;
+        output.textContent = streamedOutput;
       },
     });
 
     if (result.stopped) {
-      output.textContent = 'Execução interrompida.';
+      output.textContent = streamedOutput
+        ? streamedOutput + '\n\n[Execução interrompida.]'
+        : 'Execução interrompida.';
       return;
     }
     if (!result.success) {
@@ -288,11 +301,13 @@ compileButton.onclick = async () => {
       return;
     }
     if (result.timedOut) {
-      output.textContent = 'Execução interrompida.';
+      output.textContent = streamedOutput
+        ? streamedOutput + '\n\n[Execução interrompida.]'
+        : 'Execução interrompida.';
       return;
     }
 
-    const visible = result.stdout ?? '';
+    const visible = streamedOutput || result.stdout || '';
     output.textContent = visible || (result.runtimeFailed ? 'Execução terminou com erro.' : 'Programa executado sem saída.');
     if (result.outputTruncated) output.textContent += '\n\n[Saída truncada por limite de segurança.]';
     if (result.runtimeFailed && visible) output.textContent += '\n\nExecução terminou com erro.';
