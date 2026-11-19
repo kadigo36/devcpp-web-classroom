@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
 
-test('1.0 inclui documentação de segurança privacidade e aceitação', async () => {
+test('1.1 inclui documentação de segurança privacidade e aceitação', async () => {
   const [security, privacy, acceptance, changelog] = await Promise.all([
     read('SECURITY.md'),
     read('PRIVACY.md'),
@@ -15,13 +15,14 @@ test('1.0 inclui documentação de segurança privacidade e aceitação', async 
   assert.match(security, /Web Worker/);
   assert.match(security, /@yowasp\/clang@21\.1\.4-3/);
   assert.match(privacy, /não implementa telemetria/i);
-  assert.match(privacy, /Google Drive não está integrado/i);
+  assert.match(privacy, /Google Drive opcional/i);
+  assert.match(privacy, /drive\.file/);
   assert.match(acceptance, /Compilação falhou/);
   assert.match(acceptance, /autocomplete\/autocorreção/);
-  assert.match(changelog, /## 1\.0\.0/);
+  assert.match(changelog, /## 1\.1\.0/);
 });
 
-test('1.0 mantém toolchain fixa e interface sem assistência', async () => {
+test('1.1 mantém toolchain fixa e interface sem assistência', async () => {
   const [worker, html] = await Promise.all([
     read('src/compiler-worker.mjs'),
     read('index.html'),
