@@ -1,9 +1,11 @@
-export const APP_VERSION = '0.4.0';
+export const APP_VERSION = '0.5.0';
 export const STORAGE_KEY_V2 = 'devcpp-classroom:poc:v1';
 export const DEFAULT_PROJECT_ID = 'default';
 export const MAX_FILE_BYTES = 500_000;
 export const MAX_PROJECT_BYTES = 2_000_000;
 export const MAX_PROJECT_FILES = 50;
+export const MAX_PROGRAM_ARGS = 64;
+export const MAX_ARG_BYTES = 4096;
 
 export const DEFAULT_C = '#include <stdio.h>\n\nint main(void) {\n    printf("Ola, mundo!\\n");\n    return 0;\n}\n';
 
@@ -15,7 +17,7 @@ export function languageFromName(name) {
 
 export function validateFilename(name) {
   return typeof name === 'string'
-    && /^[a-zA-Z0-9_ .-]+\.(c|cc|cpp|cxx|h|hpp)$/i.test(name)
+    && /^[a-zA-Z0-9_ .-]+\.(c|cc|cpp|cxx|h|hpp|txt|dat|csv)$/i.test(name)
     && name.length <= 100;
 }
 
@@ -84,6 +86,13 @@ export function compilerLanguage(project) {
   return sourceFiles(project).some(name => /\.(cc|cpp|cxx)$/i.test(name)) ? 'cpp' : 'c';
 }
 
+export function runtimeFiles(project) {
+  const normalized = normalizeProject(project);
+  return Object.fromEntries(
+    Object.entries(normalized.files).filter(([name]) => /\.(txt|dat|csv)$/i.test(name))
+  );
+}
+
 export function addFile(project, name, source = '') {
   const normalized = normalizeProject(project);
   if (!validateFilename(name)) throw new Error('Nome de ficheiro inválido');
@@ -134,4 +143,15 @@ export function importProjectPackage(text) {
     throw new Error('Formato de projeto não suportado');
   }
   return normalizeProject(payload.project);
+}
+
+
+export function programArgsFromLines(text) {
+  if (typeof text !== 'string') return [];
+  const args = text.split(/\r?\n/).filter(line => line.length > 0);
+  if (args.length > MAX_PROGRAM_ARGS) throw new Error('Demasiados argumentos');
+  for (const arg of args) {
+    if (new TextEncoder().encode(arg).length > MAX_ARG_BYTES) throw new Error('Argumento demasiado grande');
+  }
+  return args;
 }

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MAX_FILE_BYTES,
+  MAX_PROGRAM_ARGS,
   MAX_PROJECT_FILES,
   addFile,
   compilerLanguage,
@@ -9,8 +10,10 @@ import {
   exportProjectPackage,
   importProjectPackage,
   normalizeProject,
+  programArgsFromLines,
   publicCompileStatus,
   removeFile,
+  runtimeFiles,
   sourceFiles,
   validateFilename,
 } from '../src/core.mjs';
@@ -31,6 +34,17 @@ test('adiciona C++ e seleciona clang++ para ligação', () => {
   assert.deepEqual(sourceFiles(project).sort(), ['helper.cpp', 'main.c']);
 });
 
+test('ficheiros de dados vão apenas para o runtime', () => {
+  let project = createProject();
+  project = addFile(project, 'dados.txt', '10\n20\n');
+  project = addFile(project, 'tabela.csv', 'a,b\n1,2\n');
+  assert.deepEqual(sourceFiles(project), ['main.c']);
+  assert.deepEqual(runtimeFiles(project), {
+    'dados.txt': '10\n20\n',
+    'tabela.csv': 'a,b\n1,2\n',
+  });
+});
+
 test('headers pertencem ao projeto mas não são compilados diretamente', () => {
   let project = createProject();
   project = addFile(project, 'calc.h', 'int soma(int,int);');
@@ -38,9 +52,11 @@ test('headers pertencem ao projeto mas não são compilados diretamente', () => 
   assert.deepEqual(sourceFiles(project), ['main.c']);
 });
 
-test('nomes de ficheiro são restritos', () => {
+test('nomes de ficheiro são restritos mas aceitam dados seguros', () => {
   assert.equal(validateFilename('main.c'), true);
   assert.equal(validateFilename('foo.hpp'), true);
+  assert.equal(validateFilename('dados.txt'), true);
+  assert.equal(validateFilename('tabela.csv'), true);
   assert.equal(validateFilename('../secret.c'), false);
   assert.equal(validateFilename('test.exe'), false);
 });
@@ -60,10 +76,16 @@ test('migra formato v0.2', () => {
 
 test('export/import de projeto preserva ficheiros', () => {
   let project = addFile(createProject(), 'calc.h', 'int soma(int,int);');
-  project = addFile(project, 'calc.c', 'int soma(int a,int b){return a+b;}');
+  project = addFile(project, 'dados.dat', '42');
   const restored = importProjectPackage(exportProjectPackage(project));
   assert.deepEqual(restored.files, project.files);
   assert.equal(restored.activeFile, project.activeFile);
+});
+
+test('argumentos são definidos um por linha e limitados', () => {
+  assert.deepEqual(programArgsFromLines('um\ndois três\n'), ['um', 'dois três']);
+  assert.deepEqual(programArgsFromLines(''), []);
+  assert.throws(() => programArgsFromLines(Array(MAX_PROGRAM_ARGS + 2).join('x\n')));
 });
 
 test('rejeita formato de pacote desconhecido', () => {

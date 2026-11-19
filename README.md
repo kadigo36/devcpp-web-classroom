@@ -1,69 +1,122 @@
-# Dev-C++ Web Classroom — v0.4
+# Dev-C++ Web Classroom — v0.5
 
 IDE escolar de C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
 
-## Estado da v0.4
+## Novidades da v0.5
 
-- C17 e C++20 através de YoWASP Clang/LLD WebAssembly.
-- Projetos multi-ficheiro: `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hpp`.
-- Compilação e execução dentro de Web Workers.
-- Diagnósticos do compilador não são enviados para a interface.
-- Persistência automática em IndexedDB.
-- Backups locais (snapshots) com retenção das 8 versões mais recentes.
-- Backup automático antes de operações destrutivas importantes.
-- Exportação/importação do projeto completo em `.devcpp.json`.
-- Exportação/importação de ficheiros individuais.
-- Limites de tamanho por ficheiro, projeto, número de ficheiros e output do programa.
-- Service Worker + Web App Manifest para cache da aplicação.
-- Indicador de estado online/offline.
-- CI no GitHub e preview Vercel antes de promoção para produção.
+- **stdout progressivo**: `printf` e `cout` podem aparecer na consola enquanto o programa está a executar.
+- **Argumentos de programa (`argc/argv`)**: um argumento por linha na interface.
+- **Filesystem virtual read-only** para ficheiros `.txt`, `.dat` e `.csv`.
+- Suporte inicial a `fopen(..., "r")`, `fread`/`fscanf`, `fseek` e `fclose` sobre ficheiros do projeto.
+- O programa continua sem acesso ao disco real, rede, Google Drive ou sistema operativo.
+- Proteção contra path traversal (`../`) e operações de escrita no filesystem virtual.
+- Mantém backups locais, export/import de projeto, limites de recursos e PWA da v0.4.
+
+## Modelo de execução
+
+```text
+Código C/C++
+   ↓
+YoWASP Clang/LLD (WebAssembly)
+   ↓
+program.wasm
+   ↓
+Worker isolado
+   ↓
+TinyWasi
+   ├─ stdin pré-carregado
+   ├─ stdout progressivo
+   ├─ argc/argv
+   └─ ficheiros virtuais read-only
+```
+
+## Ficheiros de dados
+
+Ficheiros com extensões:
+
+- `.txt`
+- `.dat`
+- `.csv`
+
+podem fazer parte do projeto e ficam disponíveis ao programa durante a execução.
+
+Exemplo:
+
+```c
+FILE *f = fopen("dados.txt", "r");
+```
+
+O ficheiro existe apenas no filesystem virtual do programa. Não existe acesso ao disco do computador.
+
+## Argumentos
+
+A interface apresenta **Argumentos do programa**, com um argumento por linha.
+
+Por exemplo:
+
+```text
+teste
+42
+nome com espaços
+```
+
+é exposto como `argv[1]`, `argv[2]` e `argv[3]`.
+
+## Entrada interativa
+
+A v0.5 **ainda não afirma ter stdin verdadeiramente interativo durante a execução**.
+
+O conteúdo de stdin continua a ser preparado antes de executar. Esta limitação é intencional: não vamos simular um terminal bloqueante e apresentá-lo como funcional antes de existir uma implementação tecnicamente robusta.
 
 ## Contrato pedagógico
 
-A interface não fornece:
+A aplicação continua sem:
 
 - autocomplete;
 - autocorreção;
 - sugestões;
 - lint;
-- indicação da linha do erro;
-- texto dos diagnósticos de Clang;
+- mensagens detalhadas do compilador;
+- identificação da linha do erro;
 - IA.
 
-Em caso de erro de compilação, o aluno vê apenas:
+Um erro de compilação continua a aparecer apenas como:
 
 `Compilação falhou.`
 
-## Limites de segurança da v0.4
+## Segurança
 
-- Máximo de 50 ficheiros por projeto.
-- Máximo de 500 kB por ficheiro.
-- Máximo aproximado de 2 MB por projeto.
-- Máximo de 1 MB de output capturado por execução.
-- Timeout de compilação e de execução.
-- Programa executado num Worker separado, que pode ser terminado.
+O filesystem virtual é read-only nesta versão.
 
-Quando o output excede o limite, o programa continua a receber sucesso nas escritas, mas a interface deixa de acumular conteúdo e apresenta um aviso de truncagem.
+- sem acesso ao filesystem real;
+- sem `../`;
+- sem paths absolutos;
+- sem criação, remoção ou alteração de ficheiros;
+- sem APIs de rede;
+- execução em Worker terminável;
+- limite de output;
+- limites por ficheiro/projeto;
+- timeout de compilação e runtime.
 
-## Persistência e recuperação
+## Toolchain
 
-O projeto atual é guardado em IndexedDB. A aplicação mantém snapshots locais para recuperação rápida.
-
-Operações como criar um projeto novo, eliminar um ficheiro, importar um projeto ou restaurar um backup criam primeiro uma cópia de recuperação quando possível.
-
-Os backups locais pertencem ao navegador/perfil atual. Para transporte entre dispositivos deve usar-se **Exportar projeto**, que gera um ficheiro `.devcpp.json`.
-
-## Execução local e offline
-
-O código do aluno é compilado e executado no navegador.
-
-A aplicação (HTML/CSS/JS) pode ser colocada em cache pelo Service Worker. Contudo, a toolchain YoWASP ainda é descarregada da CDN na primeira utilização. Por isso, **v0.4 não promete compilação offline total num dispositivo que nunca tenha carregado a toolchain**.
-
-A toolchain está fixada em:
+Toolchain fixa:
 
 `@yowasp/clang@21.1.4-3`
 
-Não existem atualizações automáticas do compilador.
+Não é atualizada automaticamente.
+
+A compilação e execução são locais no browser, mas a primeira carga da toolchain ainda depende da CDN.
+
+## Exemplos
+
+- `examples/hello.c`
+- `examples/hello.cpp`
+- `examples/input.c`
+- `examples/input.cpp`
+- `examples/args.c`
+- `examples/fileio.c`
+- `examples/dados.txt`
 
 ## Desenvolvimento
 
@@ -72,12 +125,4 @@ npm run dev
 npm test
 ```
 
-Requer Node.js 20 ou superior.
-
-## Limitações conhecidas
-
-- `stdin` é fornecido antes da execução; ainda não existe terminal interativo bloqueante.
-- O host WASI é intencionalmente mínimo.
-- `fopen()` e filesystem POSIX ainda não estão disponíveis ao programa.
-- A sincronização manual com Google Drive continua planeada.
-- A primeira carga do compilador pode ser lenta em redes/equipamentos modestos.
+Requer Node.js 20+.
