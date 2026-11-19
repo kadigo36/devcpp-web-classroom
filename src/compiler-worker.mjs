@@ -1,6 +1,6 @@
 import { executeWasi } from './wasi-host.mjs';
 
-// Versão fixa para a PoC: evita alterações inesperadas no compilador entre aulas.
+// Pinned: não atualizar automaticamente. Mudanças de toolchain exigem revisão explícita.
 const TOOLCHAIN_URL = 'https://cdn.jsdelivr.net/npm/@yowasp/clang@21.1.4-3/gen/bundle.js';
 let toolchainPromise;
 
@@ -9,27 +9,20 @@ function loadToolchain() {
   return toolchainPromise;
 }
 
-function compilerArgs(language, filename) {
-  const compiler = language === 'cpp' ? 'clang++' : 'clang';
-  const standard = language === 'cpp' ? '-std=c++20' : '-std=c17';
-  return {
+function compilerArgs(project) {
+  const compiler = project.language === 'cpp' ? 'clang++' : 'clang';
+  const standard = project.language === 'cpp' ? '-std=c++20' : '-std=c17';
+  return [
     compiler,
-    args: [
-      standard,
-      '-O0',
-      '-Wno-everything',
-      '-fno-color-diagnostics',
-      filename,
-      '-o',
-      'program.wasm',
-      '-lm',
-    ],
-  };
-}
-
-function diagnosticSink() {
-  // Os diagnósticos são deliberadamente descartados. A UI recebe apenas sucesso/falha.
-  return () => {};
+    standard,
+    '-O0',
+    '-Wno-everything',
+    '-fno-color-diagnostics',
+    ...project.sources,
+    '-o',
+    'program.wasm',
+    '-lm',
+  ];
 }
 
 self.onmessage = async event => {
@@ -38,18 +31,24 @@ self.onmessage = async event => {
 
   try {
     self.postMessage({ id, type: 'phase', phase: 'toolchain' });
-    const toolchain = await loadToolchain();
-    const { compiler, args } = compilerArgs(project.language, project.name);
-    const command = toolchain.commands?.[compiler];
-    if (typeof command !== 'function') throw new Error('Compilador WebAssembly indisponível.');
+    const { runClang } = await loadToolchain();
+    if (typeof runClang !== 'function') throw new Error('Toolchain incompatível');
 
     self.postMessage({ id, type: 'phase', phase: 'compile' });
     let outputs;
     try {
-      outputs = await command(
-        args,
-        { [project.name]: project.source },
-        { stdout: diagnosticSink(), stderr: diagnosticSink(), decodeASCII: false },
+      outputs = await runClang(
+        compilerArgs(project),
+        project.files,
+        {
+          stdout: null,
+          stderr: null,
+          decodeASCII: false,
+          fetchProgress: ({ totalLength, doneLength }) => {
+            const progress = totalLength > 0 ? Math.min(1, doneLength / totalLength) : null;
+            self.postMessage({ id, type: 'phase', phase: 'toolchain', progress });
+          },
+        },
       );
     } catch {
       self.postMessage({ id, type: 'result', result: { success: false, stage: 'compile' } });
