@@ -2,3 +2,9 @@
 #projectSelect{background:#1e293b;color:#e7eaf1;border:1px solid #64748b;padding:.58rem .7rem;border-radius:5px;max-width:220px}#projectSelect:disabled{opacity:.45}
 .shortcut-hint{font-size:.72rem;color:#94a3b8;margin-left:auto}
 #compatStatus[data-state="online"]{border-color:#166534}#compatStatus[data-state="offline"]{border-color:#991b1b}
+.runtime-input{margin-top:1rem;padding:.85rem;border:1px solid #64748b;border-radius:6px;background:#172033}
+.runtime-input[hidden]{display:none}
+.runtime-input label{display:block;font-weight:600;margin-bottom:.5rem}
+.runtime-input-row{display:flex;gap:.5rem}
+.runtime-input-row input{flex:1;min-width:0;background:#0b1220;color:#e7eaf1;border:1px solid #64748b;border-radius:5px;padding:.58rem .7rem;font:14px monospace}
+.runtime-input small{display:block;color:#94a3b8;margin-top:.45rem}
