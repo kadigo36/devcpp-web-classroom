@@ -12,29 +12,65 @@
   <header>
     <strong>Dev-C++ Web Classroom</strong>
     <div class="header-meta">
-      <span>v1.0.1 · C/C++ local no navegador</span>
+      <span>v1.0.2 · C/C++ local no navegador</span>
       <span id="networkStatus" class="status-pill">A verificar rede…</span>
       <span id="compatStatus" class="status-pill">Compatibilidade: a verificar…</span>
     </div>
   </header>
 
+  <div id="menuBackdrop" class="menu-backdrop" hidden></div>
+  <aside id="appMenu" class="app-menu" aria-label="Menu principal" aria-hidden="true">
+    <div class="app-menu-header">
+      <div>
+        <strong>Menu</strong>
+        <span>Dev-C++ Web Classroom</span>
+      </div>
+      <button id="menuClose" class="icon-button" type="button" aria-label="Fechar menu">×</button>
+    </div>
+    <div class="app-menu-content">
+      <section class="menu-section">
+        <h2>Projeto</h2>
+        <label class="menu-label" for="projectSelect">Projeto atual</label>
+        <select id="projectSelect" aria-label="Projeto atual"></select>
+        <div class="menu-actions">
+          <button id="newProject" data-menu-action>Novo projeto</button>
+          <button id="renameProject" data-menu-action>Renomear projeto</button>
+          <button id="deleteProject" class="danger" data-menu-action>Eliminar projeto</button>
+        </div>
+      </section>
+      <section class="menu-section">
+        <h2>Ficheiros</h2>
+        <div class="menu-actions">
+          <button id="newFile" data-menu-action>Novo ficheiro</button>
+          <button id="renameFile" data-menu-action>Renomear ficheiro</button>
+          <button id="duplicateFile" data-menu-action>Duplicar ficheiro</button>
+          <button id="open" data-menu-action>Importar ficheiro</button>
+          <button id="save" data-menu-action>Exportar ficheiro</button>
+        </div>
+      </section>
+      <section class="menu-section">
+        <h2>Projeto completo</h2>
+        <div class="menu-actions">
+          <button id="exportProject" data-menu-action>Exportar projeto</button>
+          <button id="importProject" data-menu-action>Importar projeto</button>
+          <button id="backupProject" data-menu-action>Criar backup</button>
+          <button id="restoreProject" data-menu-action>Restaurar backup</button>
+        </div>
+      </section>
+      <section class="menu-section">
+        <h2>Ferramentas</h2>
+        <div class="menu-actions">
+          <button id="prepareOffline" data-menu-action>Preparar offline</button>
+          <button id="diagnoseEnvironment" data-menu-action>Verificar ambiente</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+
   <main>
     <nav class="toolbar">
-      <select id="projectSelect" aria-label="Projeto atual"></select>
-      <button id="newProject">Novo projeto</button>
-      <button id="renameProject">Renomear projeto</button>
-      <button id="deleteProject">Eliminar projeto</button>
-      <button id="newFile">Novo ficheiro</button>
-      <button id="renameFile">Renomear ficheiro</button>
-      <button id="duplicateFile">Duplicar ficheiro</button>
-      <button id="open">Importar ficheiro</button>
-      <button id="save">Exportar ficheiro</button>
-      <button id="exportProject">Exportar projeto</button>
-      <button id="importProject">Importar projeto</button>
-      <button id="backupProject">Criar backup</button>
-      <button id="restoreProject">Restaurar backup</button>
-      <button id="prepareOffline">Preparar offline</button>
-      <button id="diagnoseEnvironment">Verificar ambiente</button>
+      <button id="menuToggle" class="menu-toggle" type="button" aria-label="Abrir menu" aria-controls="appMenu" aria-expanded="false">☰</button>
+      <span id="currentProjectName" class="current-project" aria-live="polite">Projeto</span>
       <button id="compile" class="primary">Compilar e executar</button>
       <button id="stop" disabled>Parar</button>
       <input id="file" type="file" accept=".c,.cc,.cpp,.cxx,.h,.hpp,.txt,.dat,.csv" hidden>
