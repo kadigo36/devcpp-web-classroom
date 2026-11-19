@@ -28,10 +28,13 @@ test('interface mantém ausência de assistência', () => {
   assert.doesNotMatch(html, /monaco|codemirror|language-server|suggestion|correção do erro/i);
 });
 
-test('v0.3 usa IndexedDB e service worker', () => {
+test('v0.4 usa IndexedDB, snapshots e service worker', () => {
   assert.match(storage, /indexedDB\.open/);
-  assert.match(sw, /caches\.open/);
-  assert.match(html, /manifest\.webmanifest/);
+  assert.match(storage, /createSnapshot/);
+  assert.match(storage, /restoreSnapshot/);
+  assert.match(sw, /devcpp-web-classroom-v0\.4/);
+  assert.match(html, /id="exportProject"/);
+  assert.match(html, /id="restoreProject"/);
 });
 
 test('TinyWasi implementa stdin e stdout em memória', () => {
@@ -53,4 +56,21 @@ test('TinyWasi implementa stdin e stdout em memória', () => {
   view.setUint32(12, 3, true);
   assert.equal(api.fd_write(1, 8, 1, 40), 0);
   assert.equal(wasi.text('stdout'), 'ok\n');
+});
+
+test('TinyWasi trunca output excessivo sem bloquear o programa', () => {
+  const wasi = new TinyWasi({ maxOutputBytes: 5 });
+  const memory = new WebAssembly.Memory({ initial: 1 });
+  wasi.attach({ exports: { memory } });
+  const view = new DataView(memory.buffer);
+  const bytes = new Uint8Array(memory.buffer);
+  const api = wasi.imports();
+
+  bytes.set(new TextEncoder().encode('123456789'), 128);
+  view.setUint32(0, 128, true);
+  view.setUint32(4, 9, true);
+  assert.equal(api.fd_write(1, 0, 1, 32), 0);
+  assert.equal(view.getUint32(32, true), 9);
+  assert.equal(wasi.text('stdout'), '12345');
+  assert.equal(wasi.outputTruncated, true);
 });

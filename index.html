@@ -11,18 +11,26 @@
 <body>
   <header>
     <strong>Dev-C++ Web Classroom</strong>
-    <span>v0.3 · C/C++ local no navegador</span>
+    <div class="header-meta">
+      <span>v0.4 · C/C++ local no navegador</span>
+      <span id="networkStatus" class="status-pill">A verificar rede…</span>
+    </div>
   </header>
 
   <main>
     <nav class="toolbar">
       <button id="newProject">Novo projeto</button>
       <button id="newFile">Novo ficheiro</button>
-      <button id="open">Importar</button>
+      <button id="open">Importar ficheiro</button>
       <button id="save">Exportar ficheiro</button>
+      <button id="exportProject">Exportar projeto</button>
+      <button id="importProject">Importar projeto</button>
+      <button id="backupProject">Criar backup</button>
+      <button id="restoreProject">Restaurar backup</button>
       <button id="compile" class="primary">Compilar e executar</button>
       <button id="stop" disabled>Parar</button>
       <input id="file" type="file" accept=".c,.cc,.cpp,.cxx,.h,.hpp" hidden>
+      <input id="projectFile" type="file" accept=".json,.devcpp.json,application/json" hidden>
       <span id="phase" class="phase" aria-live="polite"></span>
     </nav>
 
@@ -34,7 +42,7 @@
         </div>
         <div id="fileList" class="file-list" aria-label="Ficheiros do projeto"></div>
         <button id="deleteFile" class="danger ghost">Eliminar ficheiro atual</button>
-        <p class="note">Persistência local em IndexedDB. Sem autocomplete, autocorreção ou diagnósticos.</p>
+        <p class="note">Persistência local em IndexedDB, com backups locais. Sem autocomplete, autocorreção ou diagnósticos.</p>
       </aside>
 
       <article class="editor-panel">

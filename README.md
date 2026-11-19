@@ -1,75 +1,83 @@
-# Dev-C++ Web Classroom — PoC v0.2
+# Dev-C++ Web Classroom — v0.4
 
-Prova de conceito de um IDE de C/C++ para sala de aula que compila e executa código **no navegador**, sem backend de compilação e sem executar ficheiros `.exe` no computador.
+IDE escolar de C/C++ executado no navegador, sem backend de compilação e sem assistência automática ao aluno.
 
-## Estado atual
+## Estado da v0.4
 
-- Editor C/C++ simples, deliberadamente sem autocomplete, autocorreção ou sugestões.
-- Compilação local no navegador com **YoWASP Clang/LLD em WebAssembly**.
-- C17 e C++20 na PoC.
-- Execução de `program.wasm` através de um host WASI mínimo no próprio Web Worker.
-- `stdin` preparado antes da execução, suficiente para validar `scanf` e `cin`.
-- `stdout` apresentado na consola.
-- Diagnósticos do compilador e `stderr` não são apresentados ao aluno.
-- Timeout de execução para impedir ciclos infinitos de bloquear a página.
-- Guardado automático do ficheiro atual no `localStorage`.
-- Importação/exportação local de `.c`, `.cpp`, `.h` e `.hpp`.
+- C17 e C++20 através de YoWASP Clang/LLD WebAssembly.
+- Projetos multi-ficheiro: `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hpp`.
+- Compilação e execução dentro de Web Workers.
+- Diagnósticos do compilador não são enviados para a interface.
+- Persistência automática em IndexedDB.
+- Backups locais (snapshots) com retenção das 8 versões mais recentes.
+- Backup automático antes de operações destrutivas importantes.
+- Exportação/importação do projeto completo em `.devcpp.json`.
+- Exportação/importação de ficheiros individuais.
+- Limites de tamanho por ficheiro, projeto, número de ficheiros e output do programa.
+- Service Worker + Web App Manifest para cache da aplicação.
+- Indicador de estado online/offline.
+- CI no GitHub e preview Vercel antes de promoção para produção.
 
-## Importante sobre "local"
+## Contrato pedagógico
 
-A compilação e a execução acontecem integralmente no navegador. Nesta PoC, o pacote do compilador é carregado de uma CDN na primeira utilização e depois pode beneficiar da cache HTTP do navegador. A próxima etapa para funcionamento offline determinístico é **vendorizar** os artefactos YoWASP no próprio projeto, eliminando a dependência da CDN.
+A interface não fornece:
 
-Nenhum código do aluno é enviado para um servidor de compilação.
+- autocomplete;
+- autocorreção;
+- sugestões;
+- lint;
+- indicação da linha do erro;
+- texto dos diagnósticos de Clang;
+- IA.
 
-## Executar
+Em caso de erro de compilação, o aluno vê apenas:
 
-Requer Node.js 20+ apenas para servir os ficheiros durante o desenvolvimento:
+`Compilação falhou.`
+
+## Limites de segurança da v0.4
+
+- Máximo de 50 ficheiros por projeto.
+- Máximo de 500 kB por ficheiro.
+- Máximo aproximado de 2 MB por projeto.
+- Máximo de 1 MB de output capturado por execução.
+- Timeout de compilação e de execução.
+- Programa executado num Worker separado, que pode ser terminado.
+
+Quando o output excede o limite, o programa continua a receber sucesso nas escritas, mas a interface deixa de acumular conteúdo e apresenta um aviso de truncagem.
+
+## Persistência e recuperação
+
+O projeto atual é guardado em IndexedDB. A aplicação mantém snapshots locais para recuperação rápida.
+
+Operações como criar um projeto novo, eliminar um ficheiro, importar um projeto ou restaurar um backup criam primeiro uma cópia de recuperação quando possível.
+
+Os backups locais pertencem ao navegador/perfil atual. Para transporte entre dispositivos deve usar-se **Exportar projeto**, que gera um ficheiro `.devcpp.json`.
+
+## Execução local e offline
+
+O código do aluno é compilado e executado no navegador.
+
+A aplicação (HTML/CSS/JS) pode ser colocada em cache pelo Service Worker. Contudo, a toolchain YoWASP ainda é descarregada da CDN na primeira utilização. Por isso, **v0.4 não promete compilação offline total num dispositivo que nunca tenha carregado a toolchain**.
+
+A toolchain está fixada em:
+
+`@yowasp/clang@21.1.4-3`
+
+Não existem atualizações automáticas do compilador.
+
+## Desenvolvimento
 
 ```bash
 npm run dev
-```
-
-Abrir:
-
-```text
-http://localhost:4173
-```
-
-## Testes locais
-
-```bash
 npm test
 ```
 
-Os testes locais verificam a lógica e o contrato da integração. A compilação real C/C++ necessita de um navegador com acesso inicial à CDN do YoWASP.
+Requer Node.js 20 ou superior.
 
-### Testes manuais da PoC
+## Limitações conhecidas
 
-1. `examples/hello.c` — `printf`.
-2. `examples/input.c` com stdin `21` — `scanf`, resultado esperado `Dobro: 42`.
-3. `examples/hello.cpp` — `std::cout`.
-4. `examples/input.cpp` com stdin `21` — `std::cin`, resultado esperado `Dobro: 42`.
-5. Introduzir um erro de sintaxe — a UI deve mostrar apenas `Compilação falhou.`.
-6. Executar `while(1){}` — a execução deve ser interrompida após o timeout.
-
-## Limitações atuais
-
-- `stdin` ainda não é interativo durante a execução; é fornecido antes de carregar em **Compilar e executar**.
-- Não há sistema de ficheiros POSIX disponível ao programa; `fopen()` e APIs de SO não fazem parte da PoC.
-- A biblioteca C/C++ e o comportamento WASI não são equivalentes ao Windows/MinGW do Dev-C++.
-- C++ exceptions podem ter limitações na toolchain WASI.
-- Google Drive/OAuth ainda não está integrado; continua planeado como sincronização manual por aluno.
-
-## Segurança pedagógica
-
-A aplicação não mostra:
-
-- linha do erro;
-- texto do diagnóstico do compilador;
-- causa do erro;
-- sugestões de correção;
-- autocomplete;
-- IA;
-- autocorreção.
-
-O compilador continua a gerar diagnósticos internamente, mas estes são descartados no Worker antes de qualquer resultado chegar à interface.
+- `stdin` é fornecido antes da execução; ainda não existe terminal interativo bloqueante.
+- O host WASI é intencionalmente mínimo.
+- `fopen()` e filesystem POSIX ainda não estão disponíveis ao programa.
+- A sincronização manual com Google Drive continua planeada.
+- A primeira carga do compilador pode ser lenta em redes/equipamentos modestos.

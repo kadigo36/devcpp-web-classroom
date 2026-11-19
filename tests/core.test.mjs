@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  MAX_FILE_BYTES,
+  MAX_PROJECT_FILES,
   addFile,
   compilerLanguage,
   createProject,
+  exportProjectPackage,
+  importProjectPackage,
   normalizeProject,
   publicCompileStatus,
   removeFile,
@@ -48,10 +52,36 @@ test('remove ficheiro sem deixar projeto vazio', () => {
   assert.throws(() => removeFile(project, 'main.c'));
 });
 
-test('migra formato v0.2 para projeto v0.3', () => {
+test('migra formato v0.2', () => {
   const project = normalizeProject({ name: 'old.cpp', source: 'int main(){}' });
   assert.equal(project.activeFile, 'old.cpp');
   assert.equal(project.files['old.cpp'], 'int main(){}');
+});
+
+test('export/import de projeto preserva ficheiros', () => {
+  let project = addFile(createProject(), 'calc.h', 'int soma(int,int);');
+  project = addFile(project, 'calc.c', 'int soma(int a,int b){return a+b;}');
+  const restored = importProjectPackage(exportProjectPackage(project));
+  assert.deepEqual(restored.files, project.files);
+  assert.equal(restored.activeFile, project.activeFile);
+});
+
+test('rejeita formato de pacote desconhecido', () => {
+  assert.throws(() => importProjectPackage('{"format":"outro","formatVersion":1,"project":{}}'));
+});
+
+test('aplica limites de tamanho e quantidade', () => {
+  assert.throws(() => normalizeProject({
+    id: 'default', name: 'x', activeFile: 'big.c',
+    files: { 'big.c': 'x'.repeat(MAX_FILE_BYTES + 1) },
+  }));
+
+  let project = createProject();
+  for (let i = 1; i < MAX_PROJECT_FILES; i++) {
+    project = addFile(project, `f${i}.h`, '');
+  }
+  assert.equal(Object.keys(project.files).length, MAX_PROJECT_FILES);
+  assert.throws(() => addFile(project, 'extra.h', ''));
 });
 
 test('estado público nunca inclui diagnóstico', () => {

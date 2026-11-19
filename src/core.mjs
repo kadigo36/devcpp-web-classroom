@@ -1,6 +1,9 @@
-export const APP_VERSION = '0.3.0';
+export const APP_VERSION = '0.4.0';
 export const STORAGE_KEY_V2 = 'devcpp-classroom:poc:v1';
 export const DEFAULT_PROJECT_ID = 'default';
+export const MAX_FILE_BYTES = 500_000;
+export const MAX_PROJECT_BYTES = 2_000_000;
+export const MAX_PROJECT_FILES = 50;
 
 export const DEFAULT_C = '#include <stdio.h>\n\nint main(void) {\n    printf("Ola, mundo!\\n");\n    return 0;\n}\n';
 
@@ -26,36 +29,46 @@ export function createProject() {
   };
 }
 
+export function projectSize(files) {
+  return Object.entries(files).reduce(
+    (sum, [name, source]) => sum + new TextEncoder().encode(name).length + new TextEncoder().encode(source).length,
+    0,
+  );
+}
+
 export function normalizeProject(input) {
   if (input && typeof input.name === 'string' && typeof input.source === 'string') {
     if (!validateFilename(input.name)) throw new Error('Projeto antigo inválido');
-    return {
+    return normalizeProject({
       id: DEFAULT_PROJECT_ID,
       name: 'Projeto',
       activeFile: input.name,
       files: { [input.name]: input.source },
       updatedAt: Date.now(),
-    };
+    });
   }
 
   if (!input || typeof input !== 'object') return createProject();
   const files = input.files;
   if (!files || typeof files !== 'object' || Array.isArray(files)) throw new Error('Projeto inválido');
 
+  const entries = Object.entries(files);
+  if (entries.length === 0) throw new Error('Projeto vazio');
+  if (entries.length > MAX_PROJECT_FILES) throw new Error('Demasiados ficheiros');
+
   const cleanFiles = {};
-  for (const [name, source] of Object.entries(files)) {
-    if (!validateFilename(name) || typeof source !== 'string' || source.length > 500_000) {
-      throw new Error('Ficheiro inválido');
-    }
+  for (const [name, source] of entries) {
+    if (!validateFilename(name) || typeof source !== 'string') throw new Error('Ficheiro inválido');
+    if (new TextEncoder().encode(source).length > MAX_FILE_BYTES) throw new Error('Ficheiro demasiado grande');
     cleanFiles[name] = source;
   }
 
-  if (Object.keys(cleanFiles).length === 0) throw new Error('Projeto vazio');
-  const activeFile = cleanFiles[input.activeFile] !== undefined ? input.activeFile : Object.keys(cleanFiles)[0];
+  if (projectSize(cleanFiles) > MAX_PROJECT_BYTES) throw new Error('Projeto demasiado grande');
 
+  const activeFile = cleanFiles[input.activeFile] !== undefined ? input.activeFile : Object.keys(cleanFiles)[0];
   return {
     id: DEFAULT_PROJECT_ID,
-    name: typeof input.name === 'string' && input.name.trim() ? input.name.slice(0, 80) : 'Projeto',
+    name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 80) : 'Projeto',
     activeFile,
     files: cleanFiles,
     updatedAt: Number.isFinite(input.updatedAt) ? input.updatedAt : Date.now(),
@@ -74,6 +87,8 @@ export function compilerLanguage(project) {
 export function addFile(project, name, source = '') {
   const normalized = normalizeProject(project);
   if (!validateFilename(name)) throw new Error('Nome de ficheiro inválido');
+  const isNew = !(name in normalized.files);
+  if (isNew && Object.keys(normalized.files).length >= MAX_PROJECT_FILES) throw new Error('Limite de ficheiros atingido');
   return normalizeProject({
     ...normalized,
     activeFile: name,
@@ -98,4 +113,25 @@ export function removeFile(project, name) {
 
 export function publicCompileStatus(result) {
   return result?.success === true ? 'Compilação concluída.' : 'Compilação falhou.';
+}
+
+
+export function exportProjectPackage(project) {
+  const normalized = normalizeProject(project);
+  return JSON.stringify({
+    format: 'devcpp-web-classroom-project',
+    formatVersion: 1,
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    project: normalized,
+  }, null, 2);
+}
+
+export function importProjectPackage(text) {
+  if (typeof text !== 'string' || text.length > MAX_PROJECT_BYTES * 2) throw new Error('Projeto inválido');
+  const payload = JSON.parse(text);
+  if (payload?.format !== 'devcpp-web-classroom-project' || payload?.formatVersion !== 1) {
+    throw new Error('Formato de projeto não suportado');
+  }
+  return normalizeProject(payload.project);
 }

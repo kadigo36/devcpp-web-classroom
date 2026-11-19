@@ -73,6 +73,7 @@ self.onmessage = async event => {
           exitCode: run.exitCode,
           stdout: run.stdout,
           runtimeFailed: run.exitCode !== 0,
+          outputTruncated: run.outputTruncated === true,
         },
       });
     } catch {
