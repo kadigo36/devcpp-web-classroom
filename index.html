@@ -12,7 +12,7 @@
   <header>
     <strong>Dev-C++ Web Classroom</strong>
     <div class="header-meta">
-      <span>v0.7 · C/C++ local no navegador</span>
+      <span>v0.8 · C/C++ local no navegador</span>
       <span id="networkStatus" class="status-pill">A verificar rede…</span>
     </div>
   </header>
@@ -24,6 +24,8 @@
       <button id="renameProject">Renomear projeto</button>
       <button id="deleteProject">Eliminar projeto</button>
       <button id="newFile">Novo ficheiro</button>
+      <button id="renameFile">Renomear ficheiro</button>
+      <button id="duplicateFile">Duplicar ficheiro</button>
       <button id="open">Importar ficheiro</button>
       <button id="save">Exportar ficheiro</button>
       <button id="exportProject">Exportar projeto</button>
@@ -36,6 +38,7 @@
       <input id="file" type="file" accept=".c,.cc,.cpp,.cxx,.h,.hpp,.txt,.dat,.csv" hidden>
       <input id="projectFile" type="file" accept=".json,.devcpp.json,application/json" hidden>
       <span id="phase" class="phase" aria-live="polite"></span>
+      <span class="shortcut-hint">Ctrl+Enter: executar · Ctrl+S: guardar · Esc: parar</span>
     </nav>
 
     <section class="workspace">
