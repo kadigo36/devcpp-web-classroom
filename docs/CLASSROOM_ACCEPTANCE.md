@@ -19,11 +19,14 @@ Este documento define testes manuais antes de disponibilizar o IDE numa aula ou 
 - [ ] Testar `for` e `while`.
 - [ ] Testar arrays e funções.
 - [ ] Testar `scanf` com stdin preparado.
+- [ ] Testar `scanf` sem stdin pré-carregado e confirmar que aparece **Programa à espera de entrada**.
+- [ ] Escrever um valor, carregar Enter e confirmar que o programa continua.
+- [ ] Testar dois `scanf` consecutivos e confirmar dois pedidos de entrada.
 
 ## C++
 
 - [ ] Compilar `std::cout`.
-- [ ] Testar `std::cin`.
+- [ ] Testar `std::cin` sem stdin pré-carregado e confirmar entrada interativa.
 - [ ] Testar `std::string`.
 - [ ] Testar `std::vector`.
 - [ ] Testar funções e classes básicas usadas pela turma.
