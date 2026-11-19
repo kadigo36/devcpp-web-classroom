@@ -12,7 +12,7 @@
   <header>
     <strong>Dev-C++ Web Classroom</strong>
     <div class="header-meta">
-      <span>v0.4 · C/C++ local no navegador</span>
+      <span>v0.5 · C/C++ local no navegador</span>
       <span id="networkStatus" class="status-pill">A verificar rede…</span>
     </div>
   </header>
@@ -29,7 +29,7 @@
       <button id="restoreProject">Restaurar backup</button>
       <button id="compile" class="primary">Compilar e executar</button>
       <button id="stop" disabled>Parar</button>
-      <input id="file" type="file" accept=".c,.cc,.cpp,.cxx,.h,.hpp" hidden>
+      <input id="file" type="file" accept=".c,.cc,.cpp,.cxx,.h,.hpp,.txt,.dat,.csv" hidden>
       <input id="projectFile" type="file" accept=".json,.devcpp.json,application/json" hidden>
       <span id="phase" class="phase" aria-live="polite"></span>
     </nav>
@@ -42,7 +42,7 @@
         </div>
         <div id="fileList" class="file-list" aria-label="Ficheiros do projeto"></div>
         <button id="deleteFile" class="danger ghost">Eliminar ficheiro atual</button>
-        <p class="note">Persistência local em IndexedDB, com backups locais. Sem autocomplete, autocorreção ou diagnósticos.</p>
+        <p class="note">Persistência local em IndexedDB, com backups e ficheiros de dados virtuais. Sem autocomplete, autocorreção ou diagnósticos.</p>
       </aside>
 
       <article class="editor-panel">
@@ -58,6 +58,8 @@
       <div class="console input-panel">
         <h2>Entrada (stdin)</h2>
         <textarea id="stdin" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Dados fornecidos ao programa antes da execução"></textarea>
+        <h2>Argumentos do programa</h2>
+        <textarea id="args" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Um argumento por linha"></textarea>
       </div>
       <div class="console">
         <h2>Consola</h2>
