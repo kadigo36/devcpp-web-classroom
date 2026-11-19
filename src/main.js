@@ -18,6 +18,16 @@ import {
 import { compileAndRun, interactiveStdinSupported, stopActiveCompilation } from './compiler.mjs';
 import { diagnoseEnvironment, formatDiagnostics } from './diagnostics.mjs';
 import {
+  DriveAuthError,
+  DriveConflictError,
+  beginDriveAuthorization,
+  disconnectDrive,
+  driveConnected,
+  listDriveProjects,
+  loadProjectFromDrive,
+  saveProjectToDrive,
+} from './drive.mjs';
+import {
   createSnapshot,
   deleteProject,
   listProjects,
@@ -46,6 +56,12 @@ const projectSelect = $('projectSelect');
 const runtimeInputPanel = $('runtimeInputPanel');
 const runtimeInput = $('runtimeInput');
 const sendRuntimeInput = $('sendRuntimeInput');
+const driveStatus = $('driveStatus');
+const driveProjectStatus = $('driveProjectStatus');
+const driveConnect = $('driveConnect');
+const driveSave = $('driveSave');
+const driveOpen = $('driveOpen');
+const driveDisconnect = $('driveDisconnect');
 
 let project = await loadProject();
 let saveTimer;
@@ -121,6 +137,28 @@ async function renderProjectSelect() {
   }
 }
 
+function updateDriveUi() {
+  const connected = driveConnected();
+  driveStatus.textContent = connected ? 'Ligado' : 'Não ligado';
+  driveStatus.dataset.state = connected ? 'online' : 'offline';
+
+  driveConnect.disabled = connected;
+  driveSave.disabled = !connected;
+  driveOpen.disabled = !connected;
+  driveDisconnect.disabled = !connected;
+
+  if (project.drive?.fileId) {
+    const when = project.drive.syncedAt
+      ? new Date(project.drive.syncedAt).toLocaleString('pt-PT')
+      : null;
+    driveProjectStatus.textContent = when
+      ? `Projeto ligado ao Drive · última sincronização local: ${when}`
+      : 'Projeto ligado a um ficheiro no Drive.';
+  } else {
+    driveProjectStatus.textContent = 'Projeto ainda não sincronizado. Sincronização manual.';
+  }
+}
+
 async function render() {
   filename.value = project.activeFile;
   editor.value = activeSource();
@@ -129,6 +167,7 @@ async function render() {
   languageLabel.textContent = compilerLanguage(project).toUpperCase();
   renderFileList();
   await renderProjectSelect();
+  updateDriveUi();
 }
 
 function phaseText(phase, progress) {
@@ -145,12 +184,14 @@ function setBusy(busy) {
   const ids = [
     'newProject', 'renameProject', 'deleteProject', 'newFile', 'renameFile', 'duplicateFile', 'open', 'save', 'exportProject', 'importProject',
     'backupProject', 'restoreProject', 'prepareOffline', 'diagnoseEnvironment', 'deleteFile',
+    'driveConnect', 'driveSave', 'driveOpen', 'driveDisconnect',
   ];
   for (const id of ids) $(id).disabled = busy;
   compileButton.disabled = busy;
   stopButton.disabled = !busy;
   editor.readOnly = busy;
   projectSelect.disabled = busy;
+  if (!busy) updateDriveUi();
 }
 
 function updateNetworkStatus() {
@@ -217,6 +258,114 @@ projectSelect.onchange = async () => {
     await render();
   } catch {
     output.textContent = 'Não foi possível abrir o projeto.';
+  }
+};
+
+driveConnect.onclick = async () => {
+  await persistNow();
+  beginDriveAuthorization(location.pathname + location.search + location.hash);
+};
+
+driveDisconnect.onclick = () => {
+  disconnectDrive();
+  updateDriveUi();
+  output.textContent = 'Google Drive desligado desta sessão. Os ficheiros no Drive não foram apagados.';
+};
+
+driveSave.onclick = async () => {
+  if (!driveConnected()) {
+    beginDriveAuthorization(location.pathname + location.search + location.hash);
+    return;
+  }
+
+  setBusy(true);
+  try {
+    await persistNow();
+
+    try {
+      project = await saveProjectToDrive(project);
+    } catch (error) {
+      if (!(error instanceof DriveConflictError)) throw error;
+
+      const replaceRemote = confirm(
+        'A versão deste projeto no Google Drive foi alterada desde a última sincronização.\n\n' +
+        'Queres substituir explicitamente a versão do Drive pela versão local?'
+      );
+      if (!replaceRemote) {
+        output.textContent = 'Conflito detetado. O ficheiro no Drive não foi alterado.';
+        return;
+      }
+      project = await saveProjectToDrive(project, { force: true });
+    }
+
+    project = await saveProject(project);
+    output.textContent = 'Projeto guardado no Google Drive.';
+    await render();
+  } catch (error) {
+    if (error instanceof DriveAuthError) {
+      output.textContent = 'A sessão do Google Drive expirou. Liga novamente o Drive.';
+    } else {
+      output.textContent = 'Não foi possível guardar o projeto no Google Drive.';
+    }
+  } finally {
+    setBusy(false);
+  }
+};
+
+driveOpen.onclick = async () => {
+  if (!driveConnected()) {
+    beginDriveAuthorization(location.pathname + location.search + location.hash);
+    return;
+  }
+
+  setBusy(true);
+  try {
+    const files = await listDriveProjects();
+    if (files.length === 0) {
+      output.textContent = 'Ainda não existem projetos desta aplicação no Google Drive.';
+      return;
+    }
+
+    const choices = files.map((file, index) => {
+      const date = file.modifiedTime
+        ? new Date(file.modifiedTime).toLocaleString('pt-PT')
+        : 'data desconhecida';
+      return `${index + 1}. ${file.name} · ${date}`;
+    }).join('\n');
+
+    const selected = prompt(`Escolhe o projeto do Google Drive:\n\n${choices}`, '1');
+    if (selected === null) return;
+
+    const index = Number(selected) - 1;
+    if (!Number.isInteger(index) || !files[index]) {
+      output.textContent = 'Seleção inválida.';
+      return;
+    }
+
+    const remote = await loadProjectFromDrive(files[index]);
+    const localProjects = await listProjects();
+    const collision = localProjects.find(item =>
+      item.id === remote.id && item.drive?.fileId && item.drive.fileId !== remote.drive?.fileId
+    );
+
+    const safeRemote = collision
+      ? normalizeProject({ ...cloneProjectAsNew(remote, remote.name), drive: remote.drive })
+      : remote;
+
+    await persistNow();
+    await createSnapshot(project, 'before-drive-open').catch(() => {});
+    project = await saveProject(safeRemote);
+    setActiveProjectId(project.id);
+    output.textContent = 'Projeto aberto a partir do Google Drive.';
+    await render();
+  } catch (error) {
+    if (error instanceof DriveAuthError) {
+      output.textContent = 'A sessão do Google Drive expirou. Liga novamente o Drive.';
+    } else {
+      output.textContent = 'Não foi possível abrir o projeto do Google Drive.';
+    }
+  } finally {
+    setBusy(false);
   }
 };
 
