@@ -4,6 +4,7 @@ const DB_NAME = 'devcpp-web-classroom';
 const DB_VERSION = 2;
 const PROJECTS = 'projects';
 const SNAPSHOTS = 'snapshots';
+const ACTIVE_PROJECT_KEY = 'devcpp-classroom:active-project';
 const MAX_SNAPSHOTS = 8;
 
 function openDb() {
@@ -19,31 +20,35 @@ function openDb() {
   });
 }
 
-async function withStore(storeName, mode, action) {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
-    const store = tx.objectStore(storeName);
-    let result;
-    try { result = action(store); } catch (error) { db.close(); reject(error); return; }
-    tx.oncomplete = () => { db.close(); resolve(result); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
-  });
-}
-
 async function idbGet(id) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(PROJECTS, 'readonly');
-    const request = tx.objectStore(PROJECTS).get(id);
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(request.error);
+    const req = tx.objectStore(PROJECTS).get(id);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
     tx.oncomplete = () => db.close();
   });
 }
 
 async function idbPut(project) {
-  return withStore(PROJECTS, 'readwrite', store => store.put(project));
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PROJECTS, 'readwrite');
+    tx.objectStore(PROJECTS).put(project);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
+async function idbDelete(id) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PROJECTS, 'readwrite');
+    tx.objectStore(PROJECTS).delete(id);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
 }
 
 function migrateLegacy() {
@@ -58,38 +63,79 @@ function migrateLegacy() {
   }
 }
 
-export async function loadProject() {
+export function getActiveProjectId() {
+  return localStorage.getItem(ACTIVE_PROJECT_KEY) || DEFAULT_PROJECT_ID;
+}
+
+export function setActiveProjectId(id) {
+  localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+}
+
+export async function listProjects() {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PROJECTS, 'readonly');
+    const req = tx.objectStore(PROJECTS).getAll();
+    req.onsuccess = () => resolve((req.result ?? []).map(normalizeProject).sort((a,b)=>b.updatedAt-a.updatedAt));
+    req.onerror = () => reject(req.error);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export async function loadProject(id = getActiveProjectId()) {
   try {
-    const stored = await idbGet(DEFAULT_PROJECT_ID);
-    if (stored) return normalizeProject(stored);
+    const stored = await idbGet(id);
+    if (stored) {
+      setActiveProjectId(stored.id);
+      return normalizeProject(stored);
+    }
   } catch {}
+
+  if (id !== DEFAULT_PROJECT_ID) {
+    const fallback = await idbGet(DEFAULT_PROJECT_ID).catch(() => null);
+    if (fallback) {
+      setActiveProjectId(fallback.id);
+      return normalizeProject(fallback);
+    }
+  }
 
   const migrated = migrateLegacy();
   if (migrated) {
     try { await idbPut(migrated); } catch {}
+    setActiveProjectId(migrated.id);
     return migrated;
   }
-  return createProject();
+
+  const fresh = createProject('Projeto', DEFAULT_PROJECT_ID);
+  await idbPut(fresh).catch(() => {});
+  setActiveProjectId(fresh.id);
+  return fresh;
 }
 
 export async function saveProject(project) {
   const normalized = normalizeProject({ ...project, updatedAt: Date.now() });
-  try {
-    await idbPut(normalized);
-    return normalized;
-  } catch {
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({
-      name: normalized.activeFile,
-      source: normalized.files[normalized.activeFile],
-    }));
-    return normalized;
+  await idbPut(normalized);
+  setActiveProjectId(normalized.id);
+  return normalized;
+}
+
+export async function deleteProject(id) {
+  await idbDelete(id);
+  const projects = await listProjects();
+  if (projects.length === 0) {
+    const fresh = createProject();
+    await saveProject(fresh);
+    return fresh;
   }
+  setActiveProjectId(projects[0].id);
+  return projects[0];
 }
 
 export async function createSnapshot(project, reason = 'manual') {
   const normalized = normalizeProject(project);
   const snapshot = {
     snapshotId: `${Date.now()}-${crypto.randomUUID?.() ?? Math.random().toString(16).slice(2)}`,
+    projectId: normalized.id,
     createdAt: Date.now(),
     reason,
     project: normalized,
@@ -102,40 +148,47 @@ export async function createSnapshot(project, reason = 'manual') {
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
+  db.close();
 
-  const snapshots = await listSnapshots();
+  const snapshots = await listSnapshots(normalized.id);
   for (const stale of snapshots.slice(MAX_SNAPSHOTS)) {
     await deleteSnapshot(stale.snapshotId);
   }
-  db.close();
   return snapshot;
 }
 
-export async function listSnapshots() {
+export async function listSnapshots(projectId = null) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(SNAPSHOTS, 'readonly');
-    const request = tx.objectStore(SNAPSHOTS).getAll();
-    request.onsuccess = () => {
-      const rows = (request.result ?? []).sort((a, b) => b.createdAt - a.createdAt);
-      resolve(rows);
+    const req = tx.objectStore(SNAPSHOTS).getAll();
+    req.onsuccess = () => {
+      let rows = req.result ?? [];
+      if (projectId) rows = rows.filter(x => (x.projectId ?? x.project?.id) === projectId);
+      resolve(rows.sort((a,b)=>b.createdAt-a.createdAt));
     };
-    request.onerror = () => reject(request.error);
+    req.onerror = () => reject(req.error);
     tx.oncomplete = () => db.close();
   });
 }
 
 export async function deleteSnapshot(snapshotId) {
-  return withStore(SNAPSHOTS, 'readwrite', store => store.delete(snapshotId));
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SNAPSHOTS, 'readwrite');
+    tx.objectStore(SNAPSHOTS).delete(snapshotId);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
 }
 
 export async function restoreSnapshot(snapshotId) {
   const db = await openDb();
   const snapshot = await new Promise((resolve, reject) => {
     const tx = db.transaction(SNAPSHOTS, 'readonly');
-    const request = tx.objectStore(SNAPSHOTS).get(snapshotId);
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(request.error);
+    const req = tx.objectStore(SNAPSHOTS).get(snapshotId);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
     tx.oncomplete = () => db.close();
   });
   if (!snapshot) throw new Error('Snapshot não encontrado');
