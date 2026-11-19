@@ -2,6 +2,7 @@ import {
   APP_VERSION,
   addFile,
   compilerLanguage,
+  cloneProjectAsNew,
   createProject,
   exportProjectPackage,
   importProjectPackage,
@@ -9,15 +10,19 @@ import {
   programArgsFromLines,
   publicCompileStatus,
   removeFile,
+  renameProject,
   validateFilename,
 } from './core.mjs';
 import { compileAndRun, stopActiveCompilation } from './compiler.mjs';
 import {
   createSnapshot,
+  deleteProject,
+  listProjects,
   listSnapshots,
   loadProject,
   restoreSnapshot,
   saveProject,
+  setActiveProjectId,
 } from './storage.mjs';
 
 const $ = id => document.getElementById(id);
@@ -33,6 +38,7 @@ const phaseLabel = $('phase');
 const fileList = $('fileList');
 const languageLabel = $('language');
 const networkStatus = $('networkStatus');
+const projectSelect = $('projectSelect');
 
 let project = await loadProject();
 let saveTimer;
@@ -88,17 +94,30 @@ function renderFileList() {
       persistEditorIntoProject();
       project = normalizeProject({ ...project, activeFile: name });
       project = await saveProject(project);
-      render();
+      await render();
     };
     fileList.append(button);
   }
 }
 
-function render() {
+async function renderProjectSelect() {
+  const projects = await listProjects();
+  projectSelect.replaceChildren();
+  for (const item of projects) {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.name;
+    option.selected = item.id === project.id;
+    projectSelect.append(option);
+  }
+}
+
+async function render() {
   filename.value = project.activeFile;
   editor.value = activeSource();
   languageLabel.textContent = compilerLanguage(project).toUpperCase();
   renderFileList();
+  await renderProjectSelect();
 }
 
 function phaseText(phase, progress) {
@@ -113,7 +132,7 @@ function phaseText(phase, progress) {
 
 function setBusy(busy) {
   const ids = [
-    'newProject', 'newFile', 'open', 'save', 'exportProject', 'importProject',
+    'newProject', 'renameProject', 'deleteProject', 'newFile', 'open', 'save', 'exportProject', 'importProject',
     'backupProject', 'restoreProject', 'prepareOffline', 'deleteFile',
   ];
   for (const id of ids) $(id).disabled = busy;
@@ -137,15 +156,59 @@ editor.addEventListener('keydown', event => {
   }
 });
 
+projectSelect.onchange = async () => {
+  try {
+    await persistNow();
+    project = await loadProject(projectSelect.value);
+    setActiveProjectId(project.id);
+    output.textContent = '';
+    stdin.value = '';
+    argsInput.value = '';
+    await render();
+  } catch {
+    output.textContent = 'Não foi possível abrir o projeto.';
+  }
+};
+
 $('newProject').onclick = async () => {
-  if (!confirm('Criar um novo projeto local? O projeto atual ficará disponível nos backups.')) return;
-  await persistNow();
-  await createSnapshot(project, 'before-new-project').catch(() => {});
-  project = await saveProject(createProject());
-  output.textContent = '';
-  stdin.value = '';
-  argsInput.value = '';
-  render();
+  const name = prompt('Nome do novo projeto:', 'Novo projeto');
+  if (name === null) return;
+  try {
+    await persistNow();
+    project = await saveProject(createProject(name));
+    output.textContent = '';
+    stdin.value = '';
+    argsInput.value = '';
+    await render();
+  } catch {
+    output.textContent = 'Não foi possível criar o projeto.';
+  }
+};
+
+$('renameProject').onclick = async () => {
+  const name = prompt('Novo nome do projeto:', project.name);
+  if (name === null) return;
+  try {
+    project = await saveProject(renameProject(project, name));
+    await render();
+  } catch {
+    output.textContent = 'Nome de projeto inválido.';
+  }
+};
+
+$('deleteProject').onclick = async () => {
+  if (!confirm(`Eliminar o projeto "${project.name}" deste navegador?`)) return;
+  try {
+    await persistNow();
+    await createSnapshot(project, 'before-delete-project').catch(() => {});
+    project = await deleteProject(project.id);
+    output.textContent = 'Projeto eliminado.';
+    stdin.value = '';
+    argsInput.value = '';
+    await render();
+  } catch {
+    output.textContent = 'Não foi possível eliminar o projeto.';
+  }
 };
 
 $('newFile').onclick = async () => {
@@ -221,13 +284,11 @@ $('projectFile').onchange = async event => {
   if (!file) return;
   try {
     if (file.size > 4_000_000) throw new Error();
-    const imported = importProjectPackage(await file.text());
-    if (!confirm('Substituir o projeto local atual pelo projeto importado? Será criado um backup antes da substituição.')) return;
+    const imported = cloneProjectAsNew(importProjectPackage(await file.text()));
     await persistNow();
-    await createSnapshot(project, 'before-import-project').catch(() => {});
     project = await saveProject(imported);
-    output.textContent = 'Projeto importado.';
-    render();
+    output.textContent = 'Projeto importado como novo projeto.';
+    await render();
   } catch {
     output.textContent = 'Projeto inválido ou demasiado grande.';
   } finally {
@@ -326,7 +387,7 @@ $('backupProject').onclick = async () => {
 
 $('restoreProject').onclick = async () => {
   try {
-    const snapshots = await listSnapshots();
+    const snapshots = await listSnapshots(project.id);
     if (snapshots.length === 0) {
       output.textContent = 'Não existem backups locais.';
       return;
