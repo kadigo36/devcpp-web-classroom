@@ -205,6 +205,7 @@ export function cloneProjectAsNew(project, name = null) {
     ...normalized,
     id: generateProjectId(),
     name: validateProjectName(name) ? name.trim() : normalized.name,
+    drive: null,
     updatedAt: Date.now(),
   });
 }
