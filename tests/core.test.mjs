@@ -5,6 +5,7 @@ import {
   MAX_PROGRAM_ARGS,
   MAX_PROJECT_FILES,
   addFile,
+  cloneProjectAsNew,
   compilerLanguage,
   createProject,
   exportProjectPackage,
@@ -13,6 +14,7 @@ import {
   programArgsFromLines,
   publicCompileStatus,
   removeFile,
+  renameProject,
   runtimeFiles,
   sourceFiles,
   validateFilename,
@@ -114,4 +116,38 @@ test('estado público nunca inclui diagnóstico', () => {
 
 test('parar sem execução ativa é seguro', () => {
   assert.equal(stopActiveCompilation(), false);
+});
+
+
+test('v0.7 cria projetos independentes com ids distintos', () => {
+  const a = createProject('A');
+  const b = createProject('B');
+  assert.notEqual(a.id, b.id);
+  assert.equal(a.name, 'A');
+  assert.equal(b.name, 'B');
+});
+
+test('normalização preserva id válido do projeto', () => {
+  const p = normalizeProject({
+    id: 'projeto_123',
+    name: 'Teste',
+    activeFile: 'main.c',
+    files: { 'main.c': 'int main(void){return 0;}' },
+    updatedAt: 1,
+  });
+  assert.equal(p.id, 'projeto_123');
+});
+
+test('clonar projeto cria novo id sem alterar os ficheiros', () => {
+  const original = addFile(createProject('Original'), 'dados.txt', '42');
+  const clone = cloneProjectAsNew(original, 'Cópia');
+  assert.notEqual(clone.id, original.id);
+  assert.equal(clone.name, 'Cópia');
+  assert.deepEqual(clone.files, original.files);
+});
+
+test('renomear projeto valida nomes vazios', () => {
+  const project = createProject('Antes');
+  assert.equal(renameProject(project, 'Depois').name, 'Depois');
+  assert.throws(() => renameProject(project, '   '));
 });

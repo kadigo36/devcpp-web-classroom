@@ -1,6 +1,7 @@
-export const APP_VERSION = '0.6.0';
+export const APP_VERSION = '0.7.0';
 export const STORAGE_KEY_V2 = 'devcpp-classroom:poc:v1';
 export const DEFAULT_PROJECT_ID = 'default';
+export const MAX_PROJECT_NAME = 80;
 export const MAX_FILE_BYTES = 500_000;
 export const MAX_PROJECT_BYTES = 2_000_000;
 export const MAX_PROJECT_FILES = 50;
@@ -21,10 +22,25 @@ export function validateFilename(name) {
     && name.length <= 100;
 }
 
-export function createProject() {
+export function generateProjectId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `project-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export function validateProjectId(id) {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]{1,120}$/.test(id);
+}
+
+export function validateProjectName(name) {
+  return typeof name === 'string' && name.trim().length > 0 && name.trim().length <= MAX_PROJECT_NAME;
+}
+
+export function createProject(name = 'Projeto', id = generateProjectId()) {
+  if (!validateProjectId(id)) throw new Error('ID de projeto inválido');
+  const cleanName = validateProjectName(name) ? name.trim() : 'Projeto';
   return {
-    id: DEFAULT_PROJECT_ID,
-    name: 'Projeto',
+    id,
+    name: cleanName,
     activeFile: 'main.c',
     files: { 'main.c': DEFAULT_C },
     updatedAt: Date.now(),
@@ -68,9 +84,12 @@ export function normalizeProject(input) {
   if (projectSize(cleanFiles) > MAX_PROJECT_BYTES) throw new Error('Projeto demasiado grande');
 
   const activeFile = cleanFiles[input.activeFile] !== undefined ? input.activeFile : Object.keys(cleanFiles)[0];
+  const id = validateProjectId(input.id) ? input.id : DEFAULT_PROJECT_ID;
+  const name = validateProjectName(input.name) ? input.name.trim() : 'Projeto';
+
   return {
-    id: DEFAULT_PROJECT_ID,
-    name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 80) : 'Projeto',
+    id,
+    name,
     activeFile,
     files: cleanFiles,
     updatedAt: Number.isFinite(input.updatedAt) ? input.updatedAt : Date.now(),
@@ -154,4 +173,20 @@ export function programArgsFromLines(text) {
     if (new TextEncoder().encode(arg).length > MAX_ARG_BYTES) throw new Error('Argumento demasiado grande');
   }
   return args;
+}
+
+
+export function cloneProjectAsNew(project, name = null) {
+  const normalized = normalizeProject(project);
+  return normalizeProject({
+    ...normalized,
+    id: generateProjectId(),
+    name: validateProjectName(name) ? name.trim() : normalized.name,
+    updatedAt: Date.now(),
+  });
+}
+
+export function renameProject(project, name) {
+  if (!validateProjectName(name)) throw new Error('Nome de projeto inválido');
+  return normalizeProject({ ...project, name: name.trim(), updatedAt: Date.now() });
 }

@@ -23,7 +23,7 @@ test('diagnósticos são silenciados antes da UI', () => {
   assert.doesNotMatch(worker, /result:\s*\{[^}]*stderr/s);
 });
 
-test('v0.6 mantém stdout incremental e ficheiros runtime', () => {
+test('v0.7 mantém stdout incremental e ficheiros runtime', () => {
   assert.match(worker, /type:\s*'stdout'/);
   assert.match(worker, /runtimeFiles/);
   assert.match(compiler, /onOutput/);
@@ -37,11 +37,11 @@ test('interface mantém ausência de assistência', () => {
   assert.doesNotMatch(html, /monaco|codemirror|language-server|suggestion|correção do erro/i);
 });
 
-test('v0.6 mantém IndexedDB, snapshots e service worker', () => {
+test('v0.7 mantém IndexedDB, snapshots e service worker', () => {
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /createSnapshot/);
   assert.match(storage, /restoreSnapshot/);
-  assert.match(sw, /devcpp-web-classroom-v0\.6/);
+  assert.match(sw, /devcpp-web-classroom-v0\.7/);
 });
 
 test('TinyWasi implementa stdin e stdout incremental', () => {
@@ -151,7 +151,7 @@ test('TinyWasi trunca output excessivo sem bloquear o programa', () => {
 });
 
 
-test('v0.6 prepara cache offline apenas para a toolchain fixa', async () => {
+test('v0.7 prepara cache offline apenas para a toolchain fixa', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="prepareOffline"/);
   assert.match(sw, /devcpp-toolchain-v21\.1\.4-3/);
@@ -163,4 +163,17 @@ test('v0.6 prepara cache offline apenas para a toolchain fixa', async () => {
   assert.match(main, /Diagnóstico C\+\+/);
   assert.match(main, /!cResult\.success/);
   assert.match(main, /!cppResult\.success/);
+});
+
+
+test('v0.7 expõe biblioteca local multi-projeto', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(html, /id="projectSelect"/);
+  assert.match(html, /id="renameProject"/);
+  assert.match(html, /id="deleteProject"/);
+  assert.match(storage, /ACTIVE_PROJECT_KEY/);
+  assert.match(storage, /export async function listProjects/);
+  assert.match(storage, /export async function deleteProject/);
+  assert.match(main, /cloneProjectAsNew\(importProjectPackage/);
+  assert.match(main, /listSnapshots\(project\.id\)/);
 });
