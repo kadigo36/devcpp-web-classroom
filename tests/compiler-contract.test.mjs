@@ -41,7 +41,7 @@ test('v0.6 mantém IndexedDB, snapshots e service worker', () => {
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /createSnapshot/);
   assert.match(storage, /restoreSnapshot/);
-  assert.match(sw, /devcpp-web-classroom-v0\.5/);
+  assert.match(sw, /devcpp-web-classroom-v0\.6/);
 });
 
 test('TinyWasi implementa stdin e stdout incremental', () => {
