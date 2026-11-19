@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Ligar Google Drive — Dev-C++ Web Classroom</title>
+  <link rel="stylesheet" href="/src/style.css">
+  <script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+<body>
+  <main class="auth-page">
+    <section class="auth-card">
+      <h1>Ligar Google Drive</h1>
+      <p>
+        O Dev-C++ Web Classroom pede apenas acesso aos ficheiros que cria ou que usas com esta aplicação.
+        O compilador continua local no navegador.
+      </p>
+      <p id="status" class="note">A preparar autorização…</p>
+      <div class="auth-actions">
+        <button id="authorizeDrive" class="primary" disabled>Continuar com Google</button>
+        <button id="cancelDrive">Voltar ao IDE</button>
+      </div>
+      <p class="note">
+        Permissão pedida: <code>drive.file</code>. O token fica apenas nesta sessão do navegador.
+      </p>
+    </section>
+  </main>
+  <script type="module" src="/src/drive-auth.js"></script>
+</body>
+</html>
